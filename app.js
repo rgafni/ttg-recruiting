@@ -255,7 +255,7 @@
       '<p class="big">' + (v.pay ? 'Pay: ' + esc(v.pay) : '<span class="warn">Pay: type it on the job post first</span>') + '</p><div class="qr big">' + qrSvg(qrText(n), 7) + '</div><p class="big">Scan, or text <b>' + esc(n.code) + '</b> to ' + esc(line()) + '</p><button class="btn noprint" onclick="print()">Print</button></div>';
   }
   function gate(e) {
-    var msg = !token ? 'This is a private app. Open it from your personal link.' : e && (e.status === 401 || e.status === 403) && /HTTP/.test(e.message) ? 'The server isn\u2019t switched on yet (one-time setup), or this link was replaced.' : e && e.status === 401 ? 'This link isn\u2019t valid anymore.' : 'Can\u2019t reach the server. Check your connection and try again.';
+    var msg = !token ? 'This is a private app. Open it from your personal link.' : e && (e.status === 401 || e.status === 403) && /HTTP/.test(e.message) ? 'The server isn\u2019t switched on yet (one-time setup), or this link was replaced.' : e && e.status === 401 ? 'This link isn\u2019t valid anymore.' : 'Can\u2019t reach the server. Check your connection. (If this is the first time, the one-time setup isn\u2019t finished yet.)';
     app.innerHTML = top('Recruiting') + '<section class="pad"><p>' + esc(msg) + '</p><div class="row"><button class="btn" data-act="retry">Try again</button><a class="btn ghost" href="?demo=1">See the demo</a></div></section>';
   }
 
