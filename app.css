@@ -334,3 +334,9 @@ h1:focus, h1:focus-visible { outline: none; box-shadow: none; }
   .toast { bottom: calc(16px + var(--safe-b)); }
 }
 footer a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; padding: 0 6px; font-weight: 800; }
+/* Header: date + actions share the first row; title and subtitle get the full width (no squeezed wrapping on phones). */
+.hdr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+.hdr__txt { display: contents; }
+.hdr__date { grid-column: 1; grid-row: 1; }
+.hdr__acts { grid-column: 2; grid-row: 1; padding-top: 0; }
+.hdr h1, .hdr__sub, .hdr .sk { grid-column: 1 / -1; }
