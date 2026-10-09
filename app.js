@@ -70,16 +70,28 @@
   /* Writes carry a request id (rid). If an answer is slow or lost, Retry sends the same rid and the server
      returns the first result instead of saving twice. */
   function rid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+  /* Google sometimes answers with a short-lived error page. A fast failure while online is retried twice; reads are safe
+     and writes are safe because the rid makes the server return the first answer. A timeout is not retried. */
   function call(action, args, id) {
     if (DEMO) return new Promise(function (res, rej) { setTimeout(function () { try { res(demoAct(action, args || [])); } catch (e) { rej(e); } }, 60); });
+    var tries = 0;
+    function once() {
+      return call1(action, args, id).catch(function (e) {
+        if (tries++ < 2 && e.net && !e.timeout && navigator.onLine !== false) return new Promise(function (r) { setTimeout(r, 1200 * tries); }).then(once);
+        throw e;
+      });
+    }
+    return once();
+  }
+  function call1(action, args, id) {
     var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctl) ctl.abort(); }, id ? 75000 : 45000);
     return fetch(C.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow', referrerPolicy: 'no-referrer', cache: 'no-store', credentials: 'omit',
       signal: ctl ? ctl.signal : undefined, body: JSON.stringify({ k: token, action: action, args: args || [], rid: id || undefined }) })
-      .then(function (r) { if (!r.ok) { var e = new Error('Server error ' + r.status); e.status = r.status; throw e; } return r.json(); }, function (e) { throw netErr(e); })
+      .then(function (r) { if (!r.ok) { var e = new Error('Server error ' + r.status); e.status = r.status; throw e; } return r.json(); }, function (e) { var x = netErr(e); x.timeout = !!(ctl && ctl.signal.aborted); throw x; })
       .then(function (j) { clearTimeout(tm); if (!j.ok) { var e = new Error(j.error || 'Something went wrong'); e.status = j.status; throw e; } return j.result; },
             function (e) { clearTimeout(tm); throw e; });
   }
-  function errMsg(e) { return e.net ? e.message + '. Nothing was saved.' : e.status === 401 ? 'Your link isn\u2019t valid anymore.' : e.status === 429 ? 'Too many taps at once. Wait a moment.' : (e.message || 'Something went wrong'); }
+  function errMsg(e) { return e.timeout ? 'The server is slow to answer. Tap Retry. It never saves twice.' : e.net ? e.message + '. Nothing was saved.' : e.status === 401 ? 'Your link isn\u2019t valid anymore.' : e.status === 429 ? 'Too many taps at once. Wait a moment.' : (e.message || 'Something went wrong'); }
   var lastFail = null;
   /* Optimistic: apply the change on screen first, save, then refresh from the sheet. On failure: put it back and offer Retry.
      opt: { local(S), msg, undo: [action, args, localFn] } */
@@ -105,7 +117,7 @@
     if (!quiet || !S) app.innerHTML = skeleton();
     var my = ++seq; busy(+1);
     return call('getAll').then(function (d) { busy(-1); if (my !== seq) return; S = d; offline = false; loadErr = null; render(true); },
-      function (e) { busy(-1); if (my !== seq) return; if (S && e.net) { offline = true; render(true); if (quiet) toast(errMsg(e), null, true); } else gate(e); });
+      function (e) { busy(-1); if (my !== seq) return; if (S && e.net) { offline = true; render(true); if (quiet) { lastFail = null; toast(navigator.onLine === false ? 'You\u2019re offline. Showing what was loaded before.' : 'Couldn\u2019t refresh from the sheet. Tap Retry.', null, true); } } else gate(e); });
   }
   var D = null;
   function dsave() { try { localStorage.setItem(DKEY, JSON.stringify(D)); } catch (e) {} }
