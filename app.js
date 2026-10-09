@@ -67,11 +67,14 @@
   /* ---------- data layer ---------- */
   var FAIL = { fail: true };
   function netErr(e) { var x = new Error(navigator.onLine === false ? 'You\u2019re offline' : 'Can\u2019t reach the server'); x.net = true; x.cause = e; return x; }
-  function call(action, args) {
+  /* Writes carry a request id (rid). If an answer is slow or lost, Retry sends the same rid and the server
+     returns the first result instead of saving twice. */
+  function rid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+  function call(action, args, id) {
     if (DEMO) return new Promise(function (res, rej) { setTimeout(function () { try { res(demoAct(action, args || [])); } catch (e) { rej(e); } }, 60); });
-    var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctl) ctl.abort(); }, 30000);
+    var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctl) ctl.abort(); }, id ? 75000 : 45000);
     return fetch(C.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow', referrerPolicy: 'no-referrer', cache: 'no-store', credentials: 'omit',
-      signal: ctl ? ctl.signal : undefined, body: JSON.stringify({ k: token, action: action, args: args || [] }) })
+      signal: ctl ? ctl.signal : undefined, body: JSON.stringify({ k: token, action: action, args: args || [], rid: id || undefined }) })
       .then(function (r) { if (!r.ok) { var e = new Error('Server error ' + r.status); e.status = r.status; throw e; } return r.json(); }, function (e) { throw netErr(e); })
       .then(function (j) { clearTimeout(tm); if (!j.ok) { var e = new Error(j.error || 'Something went wrong'); e.status = j.status; throw e; } return j.result; },
             function (e) { clearTimeout(tm); throw e; });
@@ -81,10 +84,10 @@
   /* Optimistic: apply the change on screen first, save, then refresh from the sheet. On failure: put it back and offer Retry.
      opt: { local(S), msg, undo: [action, args, localFn] } */
   function act(action, args, opt) {
-    opt = opt || {}; var snap = JSON.stringify(S);
+    opt = opt || {}; opt.rid = opt.rid || rid(); var snap = JSON.stringify(S);
     if (opt.local) { try { opt.local(S); render(true); } catch (e) {} }
     busy(+1);
-    return call(action, args).then(function (r) {
+    return call(action, args, opt.rid).then(function (r) {
       busy(-1); offline = false;
       if (opt.msg) toast(opt.msg, opt.undo ? function () { act(opt.undo[0], opt.undo[1], { local: opt.undo[2], msg: 'Undone' }); } : null);
       return load(true).then(function () { return r; });
