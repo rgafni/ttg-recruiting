@@ -7,7 +7,7 @@
   --line: #E6E9EF; --line-strong: #D3D9E2;
   --blue: #265CDA; --blue-dark: #1A45B0; --blue-soft: #EAF1FF;
   --red: #B41E44; --red-dark: #951838; --red-soft: #FCEBF0;
-  --green: #12804B; --green-soft: #E7F6EE; --amber: #9A5B00; --amber-soft: #FFF4E0;
+  --green: #0E7040; --green-soft: #E7F6EE; --amber: #9A5B00; --amber-soft: #FFF4E0;
   --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --fs-title: 2rem; --fs-h2: 1.25rem; --fs-item: 1.125rem; --fs-body: 1.0625rem; --fs-meta: .9375rem; --fs-label: .875rem;
   --r-sm: 12px; --r-md: 16px; --r-lg: 20px; --r-xl: 24px; --pill: 999px;
@@ -29,7 +29,7 @@ svg.i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor;
 #app { max-width: 640px; margin: 0 auto; padding: 0 var(--pad) calc(40px + var(--safe-b)); }
 html.wide #app { max-width: 1080px; padding: 0 40px 60px; }
 .view { animation: in .22s ease-out both; }
-@keyframes in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes in { from { transform: translateY(6px); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .view, .sheet, .toast { animation: none !important; transition: none !important; } }
 
 /* Header */

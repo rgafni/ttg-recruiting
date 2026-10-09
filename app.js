@@ -224,7 +224,7 @@
   function stages(active) {
     var c = counts();
     return '<nav class="stages" aria-label="Hiring stages">' + STAGES.map(function (s) {
-      return '<a href="#/stage/' + s[0] + '" class="stage' + (c[s[0]] ? ' has' : '') + (active === s[0] ? ' on" aria-current="page' : '') + '" aria-label="' + s[2] + ': ' + c[s[0]] + '"><b>' + c[s[0]] + '</b><span>' + s[1] + '</span></a>'; }).join('') + '</nav>';
+      return '<a href="#/stage/' + s[0] + '" class="stage' + (c[s[0]] ? ' has' : '') + (active === s[0] ? ' on" aria-current="page' : '') + '"><b>' + c[s[0]] + '</b><span>' + s[1] + '</span></a>'; }).join('') + '</nav>';
   }
   function today() { return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); }
   function headActs() {
@@ -343,7 +343,7 @@
       (a.mode === 'email' ? (a.email ? '<div class="callout callout--blue">' + ic('mail') + '<span>Applicants email their resume to ' + esc(a.email) + ' with \u201c' + esc(n.code) + '\u201d in the subject. They show up below for you to review.</span></div>' : '<div class="callout callout--red">' + ic('alert') + '<span>Add the email applicants should write to in <a href="#/settings">Settings</a>.</span></div>') : '') +
       '<div class="card card--flush">' + r.boards.map(function (k) {
         var c = T.CHANNELS[k], url = k === 'community' ? 'https://wa.me/?text=' + encodeURIComponent(v.text[k]) : c.url;
-        return '<div class="chan"><div class="chan__head"><span class="chan__logo chan--' + k + '" aria-hidden="true">' + LOGO[k] + '</span><span class="grow"><span class="row__t">' + esc(c.name) + '</span><span class="row__s">' + (posted[k] ? 'Posted ' + esc(when(posted[k])) + ' \u00b7 <button class="linkbtn linkbtn--in" data-unposted="' + k + '" data-id="' + n.id + '">Undo</button>' : 'Not posted yet') + '</span></span>' + (posted[k] ? '<span class="tag tag--green" aria-label="Posted">' + ic('check') + '</span>' : '') + '</div>' +
+        return '<div class="chan"><div class="chan__head"><span class="chan__logo chan--' + k + '" aria-hidden="true">' + LOGO[k] + '</span><span class="grow"><span class="row__t">' + esc(c.name) + '</span><span class="row__s">' + (posted[k] ? 'Posted ' + esc(when(posted[k])) + ' \u00b7 <button class="linkbtn linkbtn--in" data-unposted="' + k + '" data-id="' + n.id + '">Undo</button>' : 'Not posted yet') + '</span></span>' + (posted[k] ? '<span class="tag tag--green" role="img" aria-label="Posted">' + ic('check') + '</span>' : '') + '</div>' +
           '<details class="prev"><summary>Preview ' + ic('chev') + '</summary><pre>' + esc(v.text[k]) + '</pre></details>' +
           '<div class="chan__actions"><button class="btn" data-copy="' + k + '">' + ic('copy') + 'Copy</button><a class="btn btn--ghost" target="_blank" rel="noopener noreferrer" href="' + esc(url) + '">' + ic('ext') + (k === 'community' ? 'WhatsApp' : 'Open') + '</a>' +
           (posted[k] ? '<span></span>' : '<button class="btn btn--soft" data-posted="' + k + '" data-id="' + n.id + '">' + ic('check') + 'Posted</button>') + '</div></div>';
