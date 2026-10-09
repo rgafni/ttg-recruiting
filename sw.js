@@ -1,7 +1,7 @@
 /* TTG Recruiting service worker: caches the APP SHELL ONLY.
    Never caches or even touches API traffic (script.google.com / googleusercontent.com), and never
    stores a URL with a query string, so a ?k= token can never land in the cache. */
-var CACHE = 'ttgr-shell-v2';
+var CACHE = 'ttgr-shell-v3';
 var SHELL = ['./', 'index.html', 'app.css', 'boot.js', 'config.js', 'qrcode.js', 'text.js', 'demo-data.js', 'app.js',
   'manifest.webmanifest', 'fonts/manrope-latin.woff2', 'icons/icon-192.png', 'icons/icon-512.png',
   'icons/maskable-192.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'];
