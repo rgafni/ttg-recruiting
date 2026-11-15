@@ -54,10 +54,10 @@
   function digits(s) { return String(s || '').replace(/[^\d+]/g, ''); }
   var undoFn = null;
   function toast(m, undo, err) {
-    var t = document.getElementById('toast'); undoFn = undo || null;
+    var t = document.getElementById('toast'); undoFn = undo || null; t.className = 'toast'; void t.offsetWidth;
     t.innerHTML = '<span>' + esc(m) + '</span>' + (undo ? '<button class="toast__btn" data-act="undo">' + ic('undo') + 'Undo</button>' : '') + (err ? '<button class="toast__btn" data-act="retry">Retry</button>' : '');
     t.className = 'toast show' + (err ? ' toast--err' : ''); toast.at = Date.now(); clearTimeout(toast.t);
-    toast.t = setTimeout(function () { t.className = 'toast'; undoFn = null; }, undo ? 6000 : err ? 7000 : 2800);
+    toast.t = setTimeout(function () { t.className = 'toast'; undoFn = null; }, undo ? 6000 : err ? 7000 : 2500);
   }
   function copy(text) {
     (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast('Copied. Paste it on the site.'); }, function () {
@@ -407,8 +407,9 @@
   }
   function home() {
     var it = needsYou(), c = pipe(), none = !S.needs.length && !S.people.length;
-    var sub = none ? 'Let\u2019s find your next great provider.' : it.length ? (it.length === 1 ? '1 thing needs you' : it.length + ' things need you') : 'You\u2019re all caught up';
-    var tiles = '<section class="sec sec--first"><div class="sec__h"><h2>Pipeline</h2><a class="linkbtn" href="#/applicants">All applicants</a></div><div class="ptiles">' +
+    var sub = none ? '' : it.length ? (it.length === 1 ? '1 thing needs you' : it.length + ' things need you') : 'You\u2019re all caught up';
+    var zero = !(c.jobs || c.fresh || c.review || c.ivs || c.offers || c.hired);
+    var tiles = zero ? '<section class="sec"><div class="sec__h"><h2>Pipeline</h2></div><p class="muted pipe-none">Nothing in the pipeline yet</p></section>' : '<section class="sec"><div class="sec__h"><h2>Pipeline</h2><a class="linkbtn" href="#/applicants">All applicants</a></div><div class="ptiles">' +
       ptile(c.jobs, 'Open jobs', '#/jobs') + ptile(c.fresh, 'New applicants', '#/applicants/new') + ptile(c.review, 'In review', '#/applicants/reviewing') +
       ptile(c.ivs, 'Interviews booked', '#/interviews/upcoming') + ptile(c.offers, 'Offers out', '#/applicants/offer') + ptile(c.hired, 'Hired this month', '#/hires', 'green') + '</div></section>';
     var strip = '<section class="sec"><div class="sec__h"><h2>Needs you</h2>' + (it.length ? '<small>' + it.length + '</small>' : '') + '</div>' +
@@ -424,7 +425,7 @@
     var act = '<section class="sec"><div class="sec__h"><h2>Recent activity</h2>' + (ev.length ? '<small>' + Math.min(ev.length, 8) + ' latest</small>' : '') + '</div>' +
       (ev.length ? '<div class="card card--flush">' + activityList(ev, 8) + '</div>' : empty('Nothing has happened yet.', '<p class="muted small">Jobs you post, people who apply and interviews you set show up here.</p>', 'pulse')) + '</section>';
     var quick = '<section class="sec"><div class="quick"><a class="qbtn" href="#/new">' + ic('brief') + '<span>New job</span></a><a class="qbtn" href="#/add">' + ic('inbox') + '<span>Add from email</span></a><a class="qbtn" href="#/projects/new">' + ic('list') + '<span>New project</span></a><a class="qbtn" href="#/hires">' + ic('gift') + '<span>Welcome packets</span></a></div></section>';
-    return '<div class="view">' + hdr('Recruiting', sub, installBtn()) + '<div class="home"><div>' + tiles + homeProjects() + strip + ivs + '</div><aside>' + quick + act + requests() + '</aside></div>' + foot() + fab() + '</div>';
+    return '<div class="view">' + hdr('Recruiting', sub, installBtn()) + '<div class="home"><div>' + homeProjects(true) + tiles + strip + ivs + '</div><aside>' + quick + act + requests() + '</aside></div>' + foot() + fab() + '</div>';
   }
 
   /* ---------- Jobs ---------- */
@@ -807,15 +808,16 @@
     var msg = !token ? 'This is a private app. Open it from your personal link.' : e && e.status === 401 ? 'This link isn\u2019t valid anymore. Ask for a new one.' : e && e.net ? errMsg(e).replace(' Nothing was saved.', '') + '. Check your connection and try again.' : 'Something went wrong loading your data. Try again.';
     app.innerHTML = '<div class="view gate" role="alert"><img src="icons/icon-192.png" alt="" width="96" height="96"><h1>TTG Recruiting</h1><p>' + esc(msg) + '</p><div class="btns">' + (token && !(e && e.status === 401) ? '<button class="btn btn--lg" data-act="reload">' + ic('refresh') + 'Try again</button>' : '') + '<a class="btn btn--lg btn--ghost" href="?demo=1">See the demo</a></div></div>';
   }
+  function clearToast() { var t = document.getElementById('toast'); if (t) t.className = 'toast'; clearTimeout(toast.t); undoFn = null; }
   function sheet(html) {
-    closeSheet(true); var b = document.createElement('div'); b.className = 'backdrop'; b.dataset.act = 'closesheet';
+    closeSheet(true); clearToast(); document.documentElement.classList.add('has-sheet'); var b = document.createElement('div'); b.className = 'backdrop'; b.dataset.act = 'closesheet';
     var s = document.createElement('div'); s.className = 'sheet'; s.setAttribute('role', 'dialog'); s.setAttribute('aria-modal', 'true'); s.innerHTML = '<div class="sheet__grab"></div>' + html;
     document.body.appendChild(b); document.body.appendChild(s);
     try { history.pushState({ sheet: 1 }, '', location.href); } catch (e) {}
     var f = s.querySelector('button, a'); if (f) f.focus();
   }
   function closeSheet(silent) {
-    var had = document.querySelector('.sheet'); document.querySelectorAll('.backdrop,.sheet').forEach(function (x) { x.remove(); });
+    var had = document.querySelector('.sheet'); document.querySelectorAll('.backdrop,.sheet').forEach(function (x) { x.remove(); }); document.documentElement.classList.remove('has-sheet');
     if (had && !silent && history.state && history.state.sheet) history.back();
   }
 
@@ -823,7 +825,7 @@
      The in-app back arrow behaves like Android's back button: it goes back one screen in this app.
      A deep link opened cold gets home inserted underneath, so back never exits on the first tap. */
   /* ---------- Projects (Nov 2026): fill a role from a batch of phones or emails. Live: nothing goes out until Roni presses Start. ---------- */
-  var MARK = { green: ['Green light', 'green', 'check'], question: ['Question', 'amber', 'q'], cross: ['Crossed off', 'grey', 'x'], '': ['Not judged yet', 'blue', 'clock'] };
+  var MARK = { green: ['Green light', 'green', 'check'], question: ['Question', 'amber', 'q'], cross: ['Crossed off', 'grey', 'x'], '': ['To review', 'blue', 'clock'] };
   var CH = { text: ['Text', 'msg'], call: ['Call', 'phone'], email: ['Email', 'mail'] };
   var CSTATE = { new: 'Not contacted yet', queued: 'Waiting to go out', contacted: 'Texted', replied: 'Replied', call_requested: 'Wants a call', calling: 'Calling now', called: 'Called', no_answer: 'No answer', drafting: 'Email draft coming', drafted: 'In your Gmail draft', opted_out: 'Opted out', done: 'Done' };
   function projects() { return S.projects || []; }
@@ -843,9 +845,9 @@
     return '<li><a class="row pjrow" href="#/project/' + pj.id + '"><span class="tile">' + ic(ch[1]) + '</span><span class="grow"><span class="jobrow__h"><span class="row__t">' + esc(pj.title) + '</span>' + (pj.status === 'paused' ? '<span class="st st--amber">Paused</span>' : '') + '</span>' +
       '<span class="row__s">' + esc(ch[0] + ' \u00b7 ' + k.all + ' ' + (k.all === 1 ? 'person' : 'people') + (pj.role ? ' \u00b7 ' + pj.role : '')) + '</span>' + tally(k) + '</span>' + ic('chev') + '</a></li>';
   }
-  function homeProjects() {
+  function homeProjects(firstSec) {
     var l = projects().filter(function (p) { return p.status !== 'done'; }).sort(function (a, b) { return String(b.updated || b.created).localeCompare(String(a.updated || a.created)); });
-    return '<section class="sec"><div class="sec__h"><h2>Projects</h2>' + (projects().length ? '<a class="linkbtn" href="#/projects">See all</a>' : '') + '</div>' +
+    return '<section class="sec' + (firstSec ? ' sec--first' : '') + '"><div class="sec__h"><h2>Projects</h2>' + (projects().length ? '<a class="linkbtn" href="#/projects">See all</a>' : '') + '</div>' +
       (l.length ? '<ul class="list">' + l.slice(0, 3).map(pjRow).join('') + '</ul><a class="btn btn--ghost btn--block" href="#/projects/new">' + ic('plus') + 'New project</a>'
         : '<a class="card addcard" href="#/projects/new"><span class="tile">' + ic('list') + '</span><span class="grow"><span class="row__t">Start a project</span><span class="row__s">Drop in phone numbers or emails for a role and say what the assistant should do.</span></span>' + ic('chev') + '</a>') + '</section>';
   }
@@ -876,7 +878,7 @@
       '<section class="card"><div class="field"><label class="lbl" for="pji">What should the assistant do?</label><textarea id="pji" maxlength="4000" aria-describedby="pji-err" placeholder="e.g. Text each number about an RBT job in Jamaica, Queens, Mon to Thu 3 to 7pm. Ask if they are certified and which days work. If they want to talk, offer a call.">' + esc(pj.instructions || '') + '</textarea>' + errP('pji') + '</div>' +
       '<div class="field"><label class="lbl" for="pjinfo">What it can tell them <small>optional</small></label><textarea id="pjinfo" class="short" maxlength="2000" placeholder="Pay range, location, hours, start date">' + esc(pj.info || '') + '</textarea></div>' +
       '<div class="field"><label class="lbl" for="pjv">What to check <small>optional</small></label><textarea id="pjv" class="short" maxlength="1000" placeholder="e.g. RBT number, which boroughs, can start by Dec 1">' + esc(pj.verify || '') + '</textarea></div>' +
-      '<div class="field"><span class="lbl">Replies</span>' + chips('pjroute', [['yes', 'Send them to me too'], ['no', 'Assistant handles them']], pj.route || 'yes', 'Replies') + '</div></section>' +
+      '<p class="muted small" id="pjreplies"' + (pj.channel === 'email' ? ' hidden' : '') + '>' + REPLIES_TXT + '</p></section>' +
       '<div class="callout callout--blue">' + ic('shield') + '<span>Nothing goes out until you press Start outreach on the project. One person is fine for a test.</span></div>' +
       '<div class="dock"><button class="btn btn--lg btn--block" type="submit">' + ic('check') + (edit ? 'Save changes' : 'Create project') + '</button></div></form></div>';
   }
@@ -888,6 +890,7 @@
   function pjNew(pj) { return contactsOf(pj.id).filter(function (c) { return c.state === 'new' && (pj.channel === 'email' ? c.email : c.phone); }); }
   function sendingOff() { return !!S.sending && !(S.sending.key && S.sending.trigger); }
   var LINE_TXT = '(443) 299-1843';
+  var REPLIES_TXT = 'Replies: every text back is logged on the person\u2019s page for you. Nothing replies to them automatically.';
   var WAIT = { shabbos: 'It goes out after Shabbat or Yom Tov.', hours: 'Texts go out 9am to 8pm. It goes out at 9am.', not_set_up: 'Texting is not set up yet, so nothing went out.' };
   function pjStartBox(pj, busyRun) {
     if (pj.status !== 'active') return '';
@@ -895,12 +898,13 @@
     var n = pjNew(pj).length; if (busyRun || !n) return '';
     return '<button class="btn btn--block" data-act="pjstart" data-id="' + pj.id + '">' + ic('send') + 'Start outreach' + (n ? ' (' + n + ')' : '') + '</button>';
   }
+  function roleA(r) { var w = { 'Behavior tech': 'behavior tech', Para: 'para' }[r] || r; return (/^(RBT|SLP|OT)$/.test(r) ? 'an ' : 'a ') + w; }
   function pjStartSheet(pj) {
     var n = pjNew(pj).length, em = pj.channel === 'email', who = n + (n === 1 ? ' person' : ' people');
-    var msg = pj.message || ('Hi, this is the assistant for Roni at Together They Grow. We have an opening: ' + pj.title + '. Are you interested? Reply here with any questions, or to ask for a call.');
+    var msg = pj.message || ('Hi, this is the assistant for Roni at Together They Grow. We have an opening' + (pj.role ? ' for ' + roleA(pj.role) : '') + '. Are you interested? Reply here with any questions, or to ask for a call.');
     sheet('<h2>' + (em ? 'Email draft for ' + who : 'Text ' + who + '?') + '</h2>' +
       '<p class="muted small">' + (em ? 'One Gmail draft in your work inbox with everyone in BCC, so nobody sees the others. You check it and press Send.' : 'From ' + LINE_TXT + '. Replies come to the assistant.') + '</p>' +
-      (em ? '<div class="field"><label class="lbl" for="pjsubj">Subject</label><input id="pjsubj" maxlength="150" value="' + esc(pj.subject || pj.title) + '"></div>' : '') +
+      (em ? '<div class="field"><label class="lbl" for="pjsubj">Subject</label><input id="pjsubj" maxlength="150" value="' + esc(pj.subject || (pj.role ? pj.role + ' opening' : 'Job opening') + ' at Together They Grow') + '"></div>' : '') +
       '<div class="field"><label class="lbl" for="pjmsg">Message</label><textarea id="pjmsg" class="short" maxlength="1200">' + esc(msg) + '</textarea>' + (em ? '' : '<p class="help">Added at the end: Reply STOP to opt out.</p>') + '</div>' +
       (em || !sendingOff() ? '' : '<p class="callout callout--amber">' + ic('alert') + '<span>' + WAIT.not_set_up + '</span></p>') +
       (em ? '' : '<p class="muted small">Texts go out 9am to 8pm, never on Shabbat or Yom Tov.</p>') +
@@ -918,10 +922,10 @@
     var h = '<div class="view narrow">' + top(pj.title, '#/projects', '<a class="iconbtn iconbtn--r" href="#/project/' + pj.id + '/edit" aria-label="Edit project">' + ic('pen') + '</a>') +
       '<section class="card"><p class="hero-chips"><span class="st st--blue">' + esc(ch[0]) + '</span>' + (pj.role ? '<span class="st st--grey">' + esc(pj.role) + '</span>' : '') + (pj.status === 'paused' ? '<span class="st st--amber">Paused</span>' : pj.status === 'done' ? '<span class="st st--grey">Done</span>' : '') + '</p>' +
       '<div class="pjstats">' + [['all', k.all, 'People', ''], ['green', k.green, 'Green light', 'g'], ['question', k.question, 'Question', 'q'], ['cross', k.cross, 'Crossed off', 'x']].map(function (s) { return '<a class="pjstat' + (s[3] ? ' pjstat--' + s[3] : '') + (seg === s[0] ? ' on' : '') + '" href="#/project/' + pj.id + '/' + s[0] + '" data-replace="1"><b>' + s[1] + '</b><span>' + s[2] + '</span></a>'; }).join('') + '</div>' +
-      '<details class="prev"><summary>What the assistant does ' + ic('chev') + '</summary><p class="pre">' + esc(pj.instructions || '') + '</p>' + (pj.info ? '<p class="lbl">It can tell them</p><p class="pre">' + esc(pj.info) + '</p>' : '') + (pj.verify ? '<p class="lbl">It checks</p><p class="pre">' + esc(pj.verify) + '</p>' : '') + '<p class="muted small">Replies: ' + (pj.route === 'yes' ? 'sent to you too' : 'the assistant handles them') + '</p></details>' +
+      '<details class="prev"><summary>What the assistant does ' + ic('chev') + '</summary><p class="pre">' + esc(pj.instructions || '') + '</p>' + (pj.info ? '<p class="lbl">It can tell them</p><p class="pre">' + esc(pj.info) + '</p>' : '') + (pj.verify ? '<p class="lbl">It checks</p><p class="pre">' + esc(pj.verify) + '</p>' : '') + (pj.channel === 'email' ? '<p class="muted small">Replies come to your work inbox.</p>' : '<p class="muted small">' + REPLIES_TXT + '</p>') + '</details>' +
       '<a class="btn btn--soft btn--block" href="#/project/' + pj.id + '/add">' + ic('plus') + 'Add people</a>' + pjStartBox(pj, busyRun) + (q ? qstatus(q) : '') + '</section>' +
       (pj.channel === 'text' && sendingOff() && !contactsOf(pj.id).some(function (c) { return c.state === 'queued'; }) ? '<div class="callout callout--amber">' + ic('alert') + '<span>Texting is not set up yet. Nothing goes out until it is.</span></div>' : '') + pjWaiting(pj) +
-      '<div class="sec__h sec__h--list"><h2>' + esc(seg === 'all' ? 'Everyone' : MARK[seg] ? MARK[seg][0] : 'Not judged yet') + '</h2>' + (seg !== 'all' ? '<a class="linkbtn" href="#/project/' + pj.id + '" data-replace="1">Show all</a>' : (k.open ? '<small>' + k.open + ' not judged</small>' : '')) + '</div>';
+      '<div class="sec__h sec__h--list"><h2>' + esc(seg === 'all' ? 'Everyone' : MARK[seg] ? MARK[seg][0] : 'To review') + '</h2>' + (seg !== 'all' ? '<a class="linkbtn" href="#/project/' + pj.id + '" data-replace="1">Show all</a>' : (k.open ? '<a class="linkbtn" href="#/project/' + pj.id + '/open" data-replace="1">' + k.open + ' to review</a>' : '')) + '</div>';
     var list = all.filter(function (c) { return seg === 'all' ? true : seg === 'open' ? !c.mark : c.mark === seg; });
     var order = { green: 0, question: 1, '': 2, cross: 3 };
     list.sort(function (a, b) { return (order[a.mark || ''] - order[b.mark || '']) || String(b.updated).localeCompare(String(a.updated)); });
@@ -958,7 +962,7 @@
     h += '<section class="sec"><div class="sec__h"><h2>Messages, calls and notes</h2>' + (tl.length ? '<small>' + tl.length + '</small>' : '') + '</div>' +
       (tl.length ? '<ul class="log">' + tl.slice().reverse().map(logItem).join('') + '</ul>' : '<p class="muted small">Nothing yet. Texts, replies and call notes show up here.</p>') +
       '<div class="card notebox"><label class="lbl" for="cnote">Add a note</label><textarea id="cnote" class="short" maxlength="2000" placeholder="What happened, how it went"></textarea><div class="btns"><button class="btn btn--soft" data-act="cnote" data-id="' + c.id + '">' + ic('check') + 'Save note</button></div></div></section>';
-    h += '<div class="btns">' + (c.person_id && personBy(c.person_id) ? '<a class="btn btn--soft" href="#/person/' + c.person_id + '">' + ic('users') + 'Open in Applicants</a>' : c.mark === 'green' && c.name ? '<button class="btn btn--soft" data-act="cpromote" data-id="' + c.id + '">' + ic('users') + 'Add to Applicants</button>' : '') +
+    h += '<div class="btns">' + (c.person_id && personBy(c.person_id) ? '<a class="btn btn--soft" href="#/person/' + c.person_id + '">' + ic('users') + 'Open in Applicants</a>' : c.mark === 'green' ? '<button class="btn btn--soft" data-act="cpromote" data-id="' + c.id + '">' + ic('users') + 'Add to Applicants</button>' : '') +
       (out || !c.phone || c.call_ok || c.state === 'calling' ? '' : '<button class="btn btn--soft" data-act="ccall" data-id="' + c.id + '">' + ic('phone') + 'Have the assistant call</button>') +
       (out ? '' : '<button class="btn btn--ghost" data-act="coptout" data-id="' + c.id + '">' + ic('x') + 'They asked us to stop</button>') + '</div>';
     return h + foot() + '</div>';
@@ -1022,7 +1026,7 @@
     var parsed = pid0 ? null : parseContacts(val('pjc'));
     if (!pid0) fieldErr('pjc', val('pjc') && !parsed.list.length ? 'No phone numbers or emails found' : '');
     if (!firstErr()) return;
-    var pr = { title: title, role: pick('pjrole')[0] || '', need_code: val('pjneed'), channel: ch, instructions: ins, info: val('pjinfo'), verify: val('pjv'), route: pick('pjroute')[0] || 'yes' };
+    var pr = { title: title, role: pick('pjrole')[0] || '', need_code: val('pjneed'), channel: ch, instructions: ins, info: val('pjinfo'), verify: val('pjv'), route: (projById(pid0) || {}).route || 'yes' };
     if (pid0) return act('updateProject', [pid0, pr], { msg: 'Saved' }).then(ok(function () { go('#/project/' + pid0, true); }));
     btn.disabled = true; busy(+1);
     call('addProject', [pr], rid()).then(function (pj) {
@@ -1053,11 +1057,16 @@
     if (a === 'coptout') { sheet('<h2>Stop contacting them?</h2><p class="muted">They won\u2019t be texted, called or emailed again from any project. This can\u2019t be undone in the app.</p><div class="btns"><button class="btn btn--lg btn--red" data-act="coptout2" data-id="' + id + '">They asked us to stop</button><button class="btn btn--lg btn--ghost" data-act="closesheet">Cancel</button></div>'); return true; }
     if (a === 'coptout2') { closeSheet(true); act('optOut', [id, 'Roni'], { msg: 'Opted out. Nobody will contact them again.' }); return true; }
     if (a === 'cpromote') { var cp = contactBy(id), pp = projById(cp.project_id) || {};
-      if (!cp.name) { toast('Add their name in a note first'); return true; }
+      if (!cp.name) { sheet('<h2>Their name</h2><p class="muted small">Applicants need a name. It is saved on this person too.</p><div class="field"><label class="lbl" for="cpname">Name</label><input id="cpname" maxlength="80" autocomplete="off"></div><div class="btns"><button class="btn btn--lg" data-act="cpromote2" data-id="' + id + '">' + ic('users') + 'Add to Applicants</button><button class="btn btn--lg btn--ghost" data-act="closesheet">Cancel</button></div>'); var ni = document.getElementById('cpname'); if (ni) ni.focus(); return true; }
+      promote(cp, pp, id); return true; }
+    if (a === 'cpromote2') { var cn = val('cpname'), cq = contactBy(id); if (!cn || !/[a-z]/i.test(cn)) { toast('Type their name'); return true; }
+      closeSheet(true); busy(+1); call('updateContact', [id, { name: cn }], rid()).then(function () { busy(-1); cq.name = cn; promote(cq, projById(cq.project_id) || {}, id); }).catch(function (e) { busy(-1); toast(errMsg(e), null, true); }); return true; }
+    return false;
+  }
+  function promote(cp, pp, id) {
       busy(+1); call('addPerson', [{ name: cp.name, phone: fmtPhone(cp.phone), email: cp.email, role: pp.role || '', need_code: pp.need_code || '', source: 'Project: ' + (pp.title || '').slice(0, 40) }], rid())
         .then(function (r) { return call('updateContact', [id, { person_id: r.id }], rid()).then(function () { busy(-1); toast('Added to Applicants. Nothing was sent.'); return load(true).then(function () { go('#/person/' + r.id); }); }); })
-        .catch(function (e) { busy(-1); toast(errMsg(e), null, true); }); return true; }
-    return false;
+        .catch(function (e) { busy(-1); toast(errMsg(e), null, true); });
   }
 
   var NAV = J(sessionStorage.getItem('ttgr.nav'), []), replacing = false;
@@ -1138,7 +1147,7 @@
     if (ev.target.id === 'from' || ev.target.id === 'to') { hrsCalc(); fieldErr('to', ''); }
     if (ev.target.id === 'pneed') { var nn = needBy(ev.target.value); if (nn && !pick('prole').length) { var b = document.querySelector('.chips[data-name="prole"] [data-v="' + nn.role + '"]'); if (b) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); } } }
   });
-  function stamp() { return new Date().toISOString().slice(0, 16); }
+  function stamp() { return dnow(); }
   function installApp() { if (AI) AI.install(); }
   document.addEventListener('click', function (ev) {
     var l = ev.target.closest('a[href^="#/"]'); if (!l || ev.defaultPrevented || ev.metaKey || ev.ctrlKey) return;
@@ -1164,6 +1173,7 @@
     if (grp && d.v) {
       if (grp.dataset.multi) { var on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
       else { grp.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); }); b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); }
+      if (grp.dataset.name === 'pjch') { var rp = document.getElementById('pjreplies'); if (rp) rp.hidden = d.v === 'email'; }
       fieldErr(grp.dataset.name, ''); return;
     }
     if (d.day) { var o = b.classList.toggle('on'); b.setAttribute('aria-pressed', String(o)); hrsCalc(); fieldErr('days', ''); return; }

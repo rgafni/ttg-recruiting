@@ -552,3 +552,16 @@ html.wide .seg--fit { flex-wrap: nowrap; padding: 4px; }
 .card .btn--block + .btn--block { margin-top: 10px; }
 .sheet textarea.short { min-height: 150px; }
 .sheet .field { margin: 12px 0; }
+
+/* ---------- Nov 15 design fixes ---------- */
+/* Toast: one at a time, 16px above the tab bar; while a sheet is open it moves to the top so it never covers the sheet. */
+html.has-tabs .toast { bottom: calc(var(--tabh) + 16px + var(--safe-b)); }
+html.has-sheet .toast, html.wide.has-sheet .toast { top: calc(16px + env(safe-area-inset-top, 0px)); bottom: auto; transform: translate(-50%, -20px); }
+html.has-sheet .toast.show { transform: translate(-50%, 0); }
+/* Sticky Create/Save bar: solid, so the form never shows through behind it; the form scrolls fully above it. */
+.dock { background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -6px 16px rgba(28,43,69,.06); margin-left: calc(-1 * var(--pad)); margin-right: calc(-1 * var(--pad)); padding-left: var(--pad); padding-right: var(--pad); }
+html.wide .dock { border-top: 0; box-shadow: none; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+form.form { padding-bottom: 24px; }
+/* Tab bar is opaque: nothing shows through it. */
+.tabbar { background: #fff; }
+.pipe-none { margin: 4px 0 0; }
