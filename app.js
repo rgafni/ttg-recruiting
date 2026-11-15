@@ -274,7 +274,7 @@
   function today() { return new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
   function standalone() { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
     var AI = window.AppInstall;
-  function installBtn(cls) { return !(AI && AI.visible()) ? '' : '<button class="' + (cls || 'pill pill--install') + '" data-act="install">' + ic('dl') + (cls ? 'Install app' : 'Install') + '</button>'; }
+  function installBtn(cls) { return !(AI && AI.visible()) ? '' : '<button class="' + (cls || 'pill pill--install') + '" data-act="install" aria-label="Install app">' + ic('dl') + '<span class="pill__t">' + (cls ? 'Install app' : 'Install') + '</span></button>'; }
   function headActs(extra) {
     var b = (extra || '') + (DEMO ? '<span class="pill pill--demo">Demo</span>' : '');
     b += '<button class="iconbtn iconbtn--r" data-act="refresh" aria-label="Refresh">' + ic('refresh') + '</button><a class="iconbtn iconbtn--r" href="#/settings" aria-label="Settings">' + ic('gear') + '</a>';

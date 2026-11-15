@@ -478,3 +478,17 @@ html.wide .seg { margin-left: 0; margin-right: 0; padding: 2px 0; flex-wrap: wra
 .seg--fit .seg__b.on b { background: var(--blue-soft); color: var(--blue); }
 html.wide .seg--fit { flex-wrap: nowrap; padding: 4px; }
 .seg--fit .seg__b b { display: none; }
+
+/* Nov 15 fixes: small phones (360px). Header date never truncates; Install is icon-only; tab labels fit; contact line breathes. */
+.hdr__date { white-space: nowrap; }
+.contact + .muted { margin-top: 10px; }
+@media (max-width: 440px) {
+  .hdr__acts { gap: 4px; }
+  .hdr__acts .pill--install { padding: 0 11px; }
+  .hdr__acts .pill--install .pill__t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+@media (max-width: 380px) {
+  .tabbar { padding-left: 0; padding-right: 0; }
+  .tab { font-size: 12.5px; letter-spacing: -.015em; }
+  .tab__i { width: 48px; }
+}
