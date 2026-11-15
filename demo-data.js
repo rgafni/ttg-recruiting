@@ -5,6 +5,9 @@ window.TTGR_DEMO = function () {
   /* Interview times never land on Shabbat or Friday afternoon. */
   function wd(off, hm) { var x = new Date(); x.setDate(x.getDate() + off); var step = off < 0 ? -1 : 1; while (x.getDay() === 6 || (x.getDay() === 5 && hm >= '12:00')) x.setDate(x.getDate() + step);
     return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2) + 'T' + hm; }
+  /* Project activity never lands on Shabbat or late Friday (past times step back, future times step forward). */
+  function nd(off, hm) { var x = new Date(); x.setDate(x.getDate() + off); var step = off <= 0 ? -1 : 1; while (x.getDay() === 6 || (x.getDay() === 5 && hm >= '13:00')) x.setDate(x.getDate() + step);
+    return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2) + 'T' + hm; }
   var musts = function (o) { return JSON.stringify(o); };
   return {
     line: '(555) 010-0199',
@@ -53,6 +56,38 @@ window.TTGR_DEMO = function () {
       { start: d(4, '16:30'), end: d(4, '17:00'), label: '' },
       { start: d(5, '12:00'), end: d(5, '12:30'), label: '' }
     ],
-    dismissed: []
+    dismissed: [],
+    /* Projects (made up). pj1 is a text project a few days in; pj2 is an email project whose batch is one Gmail draft (BCC). */
+    projects: [
+      { id: 'pj1', title: 'RBT in Jamaica, after school', role: 'RBT', need_code: 'Q12', channel: 'text', instructions: 'Text each number about an RBT job in Jamaica, Queens, Mon to Thu 3 to 7pm, starting in about two weeks. Ask if they are a certified RBT and which days work. If they want to talk, offer a call at a time that suits them. Cross off anyone who says no.', info: 'About 16 hours a week. Home based. Pay range is on the job post.', verify: 'RBT certification number, which days they can do, can they start by the start date', route: 'yes', status: 'active', created: nd(-3, '09:00'), updated: nd(0, '09:40') },
+      { id: 'pj2', title: 'Speech therapist, Midwood', role: 'SLP', need_code: 'K58', channel: 'email', instructions: 'Email each person about a school-based SLP job in Midwood, Mon and Wed 3 to 5pm. Ask for a resume and their NYS license and TSSLD. Mention that bilingual is a plus.', info: 'Two afternoons a week, near the Q train.', verify: 'NYS SLP license, TSSLD', route: 'yes', status: 'active', created: nd(-1, '11:00'), updated: nd(-1, '11:20') }
+    ],
+    contacts: [
+      { id: 'c1', project_id: 'pj1', name: 'Tasha Greene', phone: '+15550100111', email: '', mark: 'green', mark_by: 'Katya', mark_why: 'Certified RBT, 2 years in home ABA, free Mon to Thu after 2pm, lives in Jamaica.', state: 'call_requested', call_at: nd(1, '16:30'), person_id: '', created: nd(-3, '09:05'), updated: nd(0, '09:40') },
+      { id: 'c2', project_id: 'pj1', name: 'Luis Ortega', phone: '+15550100112', email: '', mark: 'green', mark_by: 'Roni', mark_why: '', state: 'call_requested', call_ok: 'them', call_at: nd(2, '15:00'), person_id: '', created: nd(-3, '09:05'), updated: nd(-1, '18:10') },
+      { id: 'c3', project_id: 'pj1', name: 'Bree Holloway', phone: '+15550100113', email: '', mark: 'question', mark_by: 'Katya', mark_why: 'Says she is certified but gave no number yet. Only free Tue and Thu.', state: 'replied', call_at: '', person_id: '', created: nd(-3, '09:05'), updated: nd(0, '08:15') },
+      { id: 'c4', project_id: 'pj1', name: '', phone: '+15550100114', email: '', mark: 'question', mark_by: 'Katya', mark_why: 'Asked for the pay before answering anything else.', state: 'replied', call_at: '', person_id: '', created: nd(-3, '09:05'), updated: nd(-1, '20:05') },
+      { id: 'c5', project_id: 'pj1', name: 'Andre Mills', phone: '+15550100115', email: '', mark: 'cross', mark_by: 'Katya', mark_why: 'Said no. Already has a full caseload.', state: 'done', call_at: '', person_id: '', created: nd(-3, '09:05'), updated: nd(-2, '12:30') },
+      { id: 'c6', project_id: 'pj1', name: 'Kayla Brooks', phone: '+15550100116', email: '', mark: 'cross', mark_by: 'Roni', mark_why: 'Not certified, not in Queens.', state: 'done', call_at: '', person_id: '', created: nd(-3, '09:05'), updated: nd(-2, '15:00') },
+      { id: 'c7', project_id: 'pj1', name: '', phone: '+15550100117', email: '', mark: 'cross', mark_by: 'Katya', mark_why: 'Asked not to be contacted', state: 'opted_out', call_at: '', person_id: '', created: nd(-3, '09:05'), updated: nd(-2, '10:00') },
+      { id: 'c8', project_id: 'pj1', name: 'Rosa Vega', phone: '+15550100118', email: '', mark: '', mark_by: '', mark_why: '', state: 'no_answer', call_at: '', person_id: '', created: nd(-3, '09:05'), updated: nd(-2, '09:00') },
+      { id: 'c9', project_id: 'pj1', name: '', phone: '+15550100119', email: '', mark: '', mark_by: '', mark_why: '', state: 'contacted', call_at: '', person_id: '', created: nd(-3, '09:05'), updated: nd(-1, '09:00') },
+      { id: 'c10', project_id: 'pj2', name: 'Hannah Pierce', phone: '', email: 'hannah.p@example.com', mark: '', mark_by: '', mark_why: '', state: 'drafted', call_at: '', person_id: '', created: nd(-1, '11:05'), updated: nd(-1, '11:20') },
+      { id: 'c11', project_id: 'pj2', name: 'Omar Haddad', phone: '', email: 'omar.h@example.com', mark: '', mark_by: '', mark_why: '', state: 'drafted', call_at: '', person_id: '', created: nd(-1, '11:05'), updated: nd(-1, '11:20') },
+      { id: 'c12', project_id: 'pj2', name: '', phone: '', email: 'speech.lena@example.com', mark: '', mark_by: '', mark_why: '', state: 'new', call_at: '', person_id: '', created: nd(-1, '11:05'), updated: nd(-1, '11:05') }
+    ],
+    touches: [
+      { id: 't1', project_id: 'pj1', contact_id: 'c1', at: nd(-3, '10:00'), channel: 'text', dir: 'out', mode: 'sent', body: 'Hi, this is the assistant for Roni at Together They Grow. We have an RBT job in Jamaica, Queens, Mon to Thu 3 to 7pm. Are you a certified RBT, and which days could you do? Reply STOP to opt out.', outcome: '', by: 'Katya' },
+      { id: 't2', project_id: 'pj1', contact_id: 'c1', at: nd(-3, '10:42'), channel: 'text', dir: 'in', mode: 'received', body: 'Yes I am! RBT for 2 years. Mon to Thu works, I live in Jamaica.', outcome: '', by: 'them' },
+      { id: 't3', project_id: 'pj1', contact_id: 'c1', at: nd(-3, '10:43'), channel: 'text', dir: 'out', mode: 'sent', body: 'Great. Could you send your RBT certification number? And would you like a quick call about the job? Tell me a time that works.', outcome: '', by: 'Katya' },
+      { id: 't4', project_id: 'pj1', contact_id: 'c1', at: nd(-2, '19:10'), channel: 'text', dir: 'in', mode: 'received', body: 'Sure, call me tomorrow around 4:30. My number is on the BACB registry under Tasha Greene.', outcome: '', by: 'them' },
+      { id: 't5', project_id: 'pj1', contact_id: 'c1', at: nd(-1, '16:52'), channel: 'call', dir: 'out', mode: 'sent', body: 'Called about the Jamaica RBT job. Went over hours, location and start date. She asked about travel between homes.', outcome: 'Went well. Certified RBT (found on the BACB registry), 2 years in home ABA, free Mon to Thu after 2pm. Wants to talk to you. Asked for a call back tomorrow 4:30pm.', by: 'Katya' },
+      { id: 't6', project_id: 'pj1', contact_id: 'c1', at: nd(0, '09:40'), channel: 'note', dir: 'note', mode: 'note', body: 'Green light. Strongest so far. Your call next.', outcome: '', by: 'Katya' },
+      { id: 't7', project_id: 'pj1', contact_id: 'c3', at: nd(0, '08:15'), channel: 'text', dir: 'in', mode: 'received', body: 'I am certified, can do Tue and Thu only. What is the pay?', outcome: '', by: 'them' },
+      { id: 't8', project_id: 'pj1', contact_id: 'c5', at: nd(-2, '12:30'), channel: 'text', dir: 'in', mode: 'received', body: 'Thanks but I have a full caseload right now.', outcome: '', by: 'them' },
+      { id: 't9', project_id: 'pj1', contact_id: 'c2', at: nd(-1, '18:10'), channel: 'note', dir: 'note', mode: 'note', body: 'Call set for Thursday 3pm. He is finishing his BCBA coursework.', outcome: '', by: 'Katya' },
+      { id: 't10', project_id: 'pj2', contact_id: 'c10', at: nd(-1, '11:20'), channel: 'email', dir: 'out', mode: 'draft', body: 'Subject: Speech therapist job in Midwood\n\nHi,\n\nTogether They Grow has a school-based SLP opening in Midwood, Brooklyn, Mon and Wed 3 to 5pm. Bilingual is a plus. If you are interested, reply with your resume and your NYS license and TSSLD.\n\nBest,\nRoni', outcome: '', by: 'Katya' },
+      { id: 't11', project_id: 'pj2', contact_id: 'c11', at: nd(-1, '11:20'), channel: 'email', dir: 'out', mode: 'draft', body: 'Subject: Speech therapist job in Midwood\n\nHi,\n\nTogether They Grow has a school-based SLP opening in Midwood, Brooklyn, Mon and Wed 3 to 5pm. Bilingual is a plus. If you are interested, reply with your resume and your NYS license and TSSLD.\n\nBest,\nRoni', outcome: '', by: 'Katya' }
+    ]
   };
 };

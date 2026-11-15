@@ -4,7 +4,7 @@
    it prepares text the owner posts or sends personally, or queues a request the assistant turns into a Gmail DRAFT. */
 (function () {
   var T = window.TTGR_TEXT, C = window.TTGR_CONFIG || {};
-  var KEY = 'ttgr.k', DKEY = 'ttgr.demo4';
+  var KEY = 'ttgr.k', DKEY = 'ttgr.demo5';
   var DEMO = new URLSearchParams(location.search).get('demo') === '1';
   var token = null; try { token = localStorage.getItem(KEY); } catch (e) {}
   var S = null, app = document.getElementById('app'), openMore = false, showUnfit = {}, installEvt = null, offline = false, loadErr = null, pending = 0;
@@ -128,7 +128,7 @@
   function dnow() { var x = new Date(); return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2) + 'T' + ('0' + x.getHours()).slice(-2) + ':' + ('0' + x.getMinutes()).slice(-2); }
   function demoAct(a, g) {
     if (!D) { D = J(localStorage.getItem(DKEY), null) || window.TTGR_DEMO(); }
-    D.settings = D.settings || { apply_email: 'jobs@example.org', calling: 'off' }; D.dismissed = D.dismissed || []; D.queue = D.queue || [];
+    D.settings = D.settings || { apply_email: 'jobs@example.org', calling: 'off' }; D.dismissed = D.dismissed || []; D.queue = D.queue || []; D.projects = D.projects || []; D.contacts = D.contacts || []; D.touches = D.touches || [];
     var r = true, id = function (p) { return p + Math.random().toString(36).slice(2, 8); };
     var find = function (t, i) { var x = D[t].filter(function (z) { return z.id === i; })[0]; if (!x) { var e = new Error('Not found'); e.status = 404; throw e; } return x; };
     var assign = function (x, p) { Object.keys(p || {}).forEach(function (k) { x[k] = p[k]; }); x.updated = dnow(); return x; };
@@ -159,6 +159,27 @@
       ['when', 'status'].forEach(function (k) { if (k in pt) iv[k] = pt[k]; }); r = iv; }
     else if (a === 'setCred') assign(find('people', g[0]), { cred_status: g[1], cred_checked: dnow() });
     else if (a === 'setSettings') { Object.keys(g[0]).forEach(function (k) { D.settings[k] = k === 'windows' ? JSON.stringify(g[0][k]) : g[0][k]; }); r = D.settings; }
+    else if (a === 'addProject') { r = assign({ id: id('pj'), status: 'active', route: 'yes', created: dnow() }, g[0]); D.projects.push(r); }
+    else if (a === 'updateProject') r = assign(find('projects', g[0]), g[1]);
+    else if (a === 'addContacts') { var hv = {}, res = { added: 0, dupes: 0, opted_out: 0, bad: 0 };
+      D.contacts.forEach(function (c) { if (c.project_id === g[0]) { if (c.phone) hv[c.phone] = 1; if (c.email) hv[c.email] = 1; } });
+      g[1].forEach(function (x) { var ph = String(x.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); ph = ph.length === 10 ? '+1' + ph : ''; var em = String(x.email || '').toLowerCase();
+        if (!ph && !em) { res.bad++; return; } if (hv[ph] || hv[em]) { res.dupes++; return; } if (ph) hv[ph] = 1; if (em) hv[em] = 1;
+        D.contacts.push({ id: id('c'), project_id: g[0], name: x.name || '', phone: ph, email: em, mark: '', mark_by: '', mark_why: '', state: 'new', call_at: '', person_id: '', created: dnow(), updated: dnow() }); res.added++; });
+      r = res; }
+    else if (a === 'updateContact') r = assign(find('contacts', g[0]), g[1]);
+    else if (a === 'markContact') r = assign(find('contacts', g[0]), { mark: g[1], mark_by: g[1] ? 'Roni' : '', mark_why: g[2] || '' });
+    else if (a === 'addNote') { var cn0 = find('contacts', g[0]); r = { id: id('t'), project_id: cn0.project_id, contact_id: cn0.id, at: dnow(), channel: 'note', dir: 'note', mode: 'note', body: g[1], outcome: '', by: 'Roni' }; D.touches.push(r); assign(cn0, {}); }
+    else if (a === 'optOut') { var co = find('contacts', g[0]); assign(co, { state: 'opted_out', mark: 'cross', mark_by: 'Roni', mark_why: 'Asked not to be contacted' }); D.touches.push({ id: id('t'), project_id: co.project_id, contact_id: co.id, at: dnow(), channel: 'note', dir: 'note', mode: 'note', body: 'Opted out. Never contact again.', by: 'Roni' }); r = co; }
+    else if (a === 'startProject') {   /* demo only: made-up people, nothing leaves this browser */
+      var sp = find('projects', g[0]), sl = D.contacts.filter(function (c) { return c.project_id === sp.id && c.state === 'new' && (sp.channel === 'email' ? c.email : c.phone); });
+      if (sp.status !== 'active') { var e1 = new Error('This project is paused. Resume it first.'); e1.status = 409; throw e1; }
+      if (!sl.length) { var e2 = new Error('No one new. Add people first.'); e2.status = 409; throw e2; }
+      assign(sp, { message: g[1].message, subject: g[1].subject || '', started: dnow() });
+      if (sp.channel === 'email') { var qe = { id: id('q'), at: dnow(), kind: 'project_email', person_id: sp.id, need_code: '', payload: '{}', status: 'queued', result: '' }; D.queue.push(qe); sl.forEach(function (c) { assign(c, { state: 'drafting', batch: '1' }); }); r = { channel: 'email', count: sl.length, queue_id: qe.id }; }
+      else { sl.forEach(function (c) { assign(c, { state: 'contacted', batch: '1' }); D.touches.push({ id: id('t'), project_id: sp.id, contact_id: c.id, at: dnow(), channel: 'text', dir: 'out', mode: 'sent', body: g[1].message + '\n\nReply STOP to opt out.', outcome: '', by: 'Katya' }); }); r = { channel: 'text', count: sl.length, sent: sl.length, failed: 0, waiting: '' }; } }
+    else if (a === 'callContact') { r = assign(find('contacts', g[0]), { call_ok: 'roni', state: 'call_requested', call_at: g[1] || '' }); }
+    else if (a === 'cancelCall') { var cc0 = find('contacts', g[0]); r = assign(cc0, { call_ok: '', state: cc0.state === 'call_requested' ? 'replied' : cc0.state, call_at: '' }); }
     if (a !== 'getAll') dsave();
     return r;
   }
@@ -181,14 +202,14 @@
   var ACTIVE = { review: 1, applicant: 1, maybe: 1 };
 
   /* ---------- assistant requests: real status from the Queue tab ---------- */
-  var KIND = { draft_invite: 'Interview email draft', draft_outreach: 'Emails to past applicants', draft_welcome: 'Welcome packet draft', call_schedule: 'Set-up call', call_interview: 'Interview call' };
+  var KIND = { draft_invite: 'Interview email draft', draft_outreach: 'Emails to past applicants', draft_welcome: 'Welcome packet draft', call_schedule: 'Set-up call', call_interview: 'Interview call', project_email: 'Project email draft' };
   function isGmail(u) { return /^https:\/\/mail\.google\.com\//.test(u || ''); }
   function qstatus(q) {
     if (!q) return '';
     var s = q.status, link = isGmail(q.result) ? '<a class="btn btn--ghost btn--sm" target="_blank" rel="noopener noreferrer" href="' + esc(q.result) + '">' + ic('ext') + 'Open in Gmail</a>' : '';
     var cancel = (s === 'queued' || s === 'waiting_approval') ? '<button class="linkbtn" data-cancelq="' + esc(q.id) + '">Cancel request</button>' : '';
     if (s === 'waiting_approval') return '<div class="qs qs--wait">' + ic('shield') + '<div class="grow"><b>Waiting for your OK to turn on calling</b><span>Nobody is called until you approve calling. You can call them yourself any time.</span>' + cancel + '</div></div>';
-    if (s === 'queued' || s === 'working') return '<div class="qs qs--queued">' + ic('clock') + '<div class="grow"><b>Queued</b><span>The assistant makes this Gmail draft on its next run. Nothing is sent.</span>' + cancel + '</div></div>';
+    if (s === 'queued' || s === 'working') return '<div class="qs qs--queued">' + ic('clock') + '<div class="grow"><b>Queued</b><span>' + (q.kind === 'project_email' ? 'The assistant makes one Gmail draft with everyone in BCC on its next run. Nothing is sent.' : 'The assistant makes this Gmail draft on its next run. Nothing is sent.') + '</span>' + cancel + '</div></div>';
     if (s === 'done') return '<div class="qs qs--done">' + ic('check') + '<div class="grow"><b>' + (link ? 'Draft ready' : 'Done') + '</b><span>' + (link ? 'It\u2019s in your Gmail drafts. Check it, then send it yourself.' : esc(q.result || 'Finished.')) + '</span>' + link + '</div></div>';
     if (s === 'failed') return '<div class="qs qs--fail">' + ic('alert') + '<div class="grow"><b>Couldn\u2019t make it</b><span>' + esc(q.result || 'Ask again, or do it by hand.') + '</span></div></div>';
     return '';
@@ -197,8 +218,8 @@
     var l = S.queue.filter(function (q) { return q.status !== 'cancelled'; }).slice(-8).reverse();
     if (!l.length) return '';
     return '<section class="sec"><div class="sec__h"><h2>Assistant requests</h2><small>' + l.length + '</small></div><ul class="list">' + l.map(function (q) {
-      var p = personBy(q.person_id), n = needBy(q.need_code), go = p ? '#/person/' + p.id : n ? '#/job/' + n.id : '';
-      return '<li class="req"><div class="req__h"><span class="row__t">' + esc(KIND[q.kind] || q.kind) + '</span><span class="row__s">' + esc((p ? p.name : n ? n.code + ' \u00b7 ' + n.role : '') + ' \u00b7 ' + when(q.at)) + '</span>' + (go ? '<a class="linkbtn" href="' + go + '">Open</a>' : '') + '</div>' + qstatus(q) + '</li>';
+      var p = personBy(q.person_id), pj = q.kind === 'project_email' ? projById(q.person_id) : null, n = needBy(q.need_code), go = pj ? '#/project/' + pj.id : p ? '#/person/' + p.id : n ? '#/job/' + n.id : '';
+      return '<li class="req"><div class="req__h"><span class="row__t">' + esc(KIND[q.kind] || q.kind) + '</span><span class="row__s">' + esc((pj ? pj.title : p ? p.name : n ? n.code + ' \u00b7 ' + n.role : '') + ' \u00b7 ' + when(q.at)) + '</span>' + (go ? '<a class="linkbtn" href="' + go + '">Open</a>' : '') + '</div>' + qstatus(q) + '</li>';
     }).join('') + '</ul></section>';
   }
 
@@ -266,6 +287,11 @@
       var posted = Object.values(J(n.posted, {})).sort()[0];
       if (n.status === 'posted' && posted && daysSince(posted) >= 5 && !S.people.some(function (p) { return p.need_code === n.code; })) items.push({ r: 7, icon: 'alert', tone: 'amber', title: 'No one yet \u00b7 ' + needLabel(n), sub: daysSince(posted) + ' days. Try another site?', go: go + '/post', cta: 'Post more', key: 'ny:' + n.id, sig: String(Math.floor(daysSince(posted) / 7)) });
     });
+    (S.contacts || []).forEach(function (c) {
+      var pj = projById(c.project_id); if (!pj || pj.status !== 'active' || pj.route !== 'yes' || c.mark === 'cross') return;
+      if (c.state === 'call_requested' && c.call_ok !== 'roni') items.push({ r: 1, icon: 'phone', tone: 'amber', title: cName(c) + ' wants a call', sub: (c.call_at ? when(c.call_at) + ' \u00b7 ' : '') + pj.title, go: '#/contact/' + c.id, cta: 'Open', key: 'cr:' + c.id, sig: c.call_at || c.updated });
+      else if (c.state === 'replied') items.push({ r: 2, icon: 'msg', tone: 'blue', title: cName(c) + ' replied', sub: pj.title, go: '#/contact/' + c.id, cta: 'Read', key: 'rp:' + c.id, sig: c.updated });
+    });
     var dis = {}; (S.dismissed || []).forEach(function (d) { dis[d.key + '|' + d.sig] = 1; });
     return items.filter(function (i) { return !dis[i.key + '|' + i.sig]; }).sort(function (a, b) { return a.r - b.r; });
   }
@@ -291,6 +317,7 @@
     if (!r) return 'home';
     if (r === 'jobs' || r === 'job' || r === 'need' || r === 'flyer') return 'jobs';
     if (r === 'applicants' || r === 'interviews' || r === 'hires') return r;
+    if ((r === 'projects' && h[1] !== 'new') || (r === 'project' && h[2] !== 'edit' && h[2] !== 'add') || r === 'contact') return 'home';
     if (r === 'person' && h[2] !== 'edit') { var p = personBy(h[1]), g = p ? segOf(p) : 'new'; return g === 'interview' ? 'interviews' : g === 'hired' ? 'hires' : 'applicants'; }
     return null;   // forms and settings: full screen, no tab bar
   }
@@ -396,8 +423,8 @@
     var ev = events();
     var act = '<section class="sec"><div class="sec__h"><h2>Recent activity</h2>' + (ev.length ? '<small>' + Math.min(ev.length, 8) + ' latest</small>' : '') + '</div>' +
       (ev.length ? '<div class="card card--flush">' + activityList(ev, 8) + '</div>' : empty('Nothing has happened yet.', '<p class="muted small">Jobs you post, people who apply and interviews you set show up here.</p>', 'pulse')) + '</section>';
-    var quick = '<section class="sec"><div class="quick"><a class="qbtn" href="#/new">' + ic('brief') + '<span>New job</span></a><a class="qbtn" href="#/add">' + ic('inbox') + '<span>Add from email</span></a><a class="qbtn" href="#/interviews">' + ic('cal') + '<span>Interviews</span></a><a class="qbtn" href="#/hires">' + ic('gift') + '<span>Welcome packets</span></a></div></section>';
-    return '<div class="view">' + hdr('Recruiting', sub, installBtn()) + '<div class="home"><div>' + tiles + strip + ivs + '</div><aside>' + quick + act + requests() + '</aside></div>' + foot() + fab() + '</div>';
+    var quick = '<section class="sec"><div class="quick"><a class="qbtn" href="#/new">' + ic('brief') + '<span>New job</span></a><a class="qbtn" href="#/add">' + ic('inbox') + '<span>Add from email</span></a><a class="qbtn" href="#/projects/new">' + ic('list') + '<span>New project</span></a><a class="qbtn" href="#/hires">' + ic('gift') + '<span>Welcome packets</span></a></div></section>';
+    return '<div class="view">' + hdr('Recruiting', sub, installBtn()) + '<div class="home"><div>' + tiles + homeProjects() + strip + ivs + '</div><aside>' + quick + act + requests() + '</aside></div>' + foot() + fab() + '</div>';
   }
 
   /* ---------- Jobs ---------- */
@@ -795,6 +822,244 @@
   /* ---------- router + back stack ----------
      The in-app back arrow behaves like Android's back button: it goes back one screen in this app.
      A deep link opened cold gets home inserted underneath, so back never exits on the first tap. */
+  /* ---------- Projects (Nov 2026): fill a role from a batch of phones or emails. Live: nothing goes out until Roni presses Start. ---------- */
+  var MARK = { green: ['Green light', 'green', 'check'], question: ['Question', 'amber', 'q'], cross: ['Crossed off', 'grey', 'x'], '': ['Not judged yet', 'blue', 'clock'] };
+  var CH = { text: ['Text', 'msg'], call: ['Call', 'phone'], email: ['Email', 'mail'] };
+  var CSTATE = { new: 'Not contacted yet', queued: 'Waiting to go out', contacted: 'Texted', replied: 'Replied', call_requested: 'Wants a call', calling: 'Calling now', called: 'Called', no_answer: 'No answer', drafting: 'Email draft coming', drafted: 'In your Gmail draft', opted_out: 'Opted out', done: 'Done' };
+  function projects() { return S.projects || []; }
+  function projById(id) { return projects().filter(function (x) { return x.id === id; })[0]; }
+  function contactsOf(pid) { return (S.contacts || []).filter(function (c) { return c.project_id === pid; }); }
+  function contactBy(id) { return (S.contacts || []).filter(function (c) { return c.id === id; })[0]; }
+  function touchesOf(cid) { return (S.touches || []).filter(function (t) { return t.contact_id === cid; }).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); }); }
+  function fmtPhone(p) { var d = String(p || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : String(p || ''); }
+  function cName(c) { return c.name || fmtPhone(c.phone) || c.email || 'No name'; }
+  function pjCounts(pid) { var o = { all: 0, green: 0, question: 0, cross: 0, open: 0, waiting: 0 }; contactsOf(pid).forEach(function (c) { o.all++; if (c.mark) o[c.mark]++; else o.open++; if (c.state === 'call_requested' || c.state === 'replied') o.waiting++; }); return o; }
+  function markChip(c) { var m = MARK[c.mark || '']; return '<span class="st st--' + m[1] + '">' + esc(m[0]) + '</span>'; }
+  function markDot(c) { var m = MARK[c.mark || '']; return '<span class="mk mk--' + (c.mark || 'none') + '" aria-hidden="true">' + ic(m[2]) + '</span>'; }
+  function cStateText(c) { var t = CSTATE[c.state] || ''; if (c.state === 'call_requested' && c.call_at) t += ' ' + when(c.call_at); return t; }
+  function tally(k) { return '<span class="tally"><span class="tally__g">' + ic('check') + k.green + '</span><span class="tally__q">' + ic('q') + k.question + '</span><span class="tally__x">' + ic('x') + k.cross + '</span>' + (k.waiting ? '<span class="meta--hot">' + k.waiting + ' replied</span>' : '') + '</span>'; }
+  function pjRow(pj) {
+    var k = pjCounts(pj.id), ch = CH[pj.channel] || CH.text;
+    return '<li><a class="row pjrow" href="#/project/' + pj.id + '"><span class="tile">' + ic(ch[1]) + '</span><span class="grow"><span class="jobrow__h"><span class="row__t">' + esc(pj.title) + '</span>' + (pj.status === 'paused' ? '<span class="st st--amber">Paused</span>' : '') + '</span>' +
+      '<span class="row__s">' + esc(ch[0] + ' \u00b7 ' + k.all + ' ' + (k.all === 1 ? 'person' : 'people') + (pj.role ? ' \u00b7 ' + pj.role : '')) + '</span>' + tally(k) + '</span>' + ic('chev') + '</a></li>';
+  }
+  function homeProjects() {
+    var l = projects().filter(function (p) { return p.status !== 'done'; }).sort(function (a, b) { return String(b.updated || b.created).localeCompare(String(a.updated || a.created)); });
+    return '<section class="sec"><div class="sec__h"><h2>Projects</h2>' + (projects().length ? '<a class="linkbtn" href="#/projects">See all</a>' : '') + '</div>' +
+      (l.length ? '<ul class="list">' + l.slice(0, 3).map(pjRow).join('') + '</ul><a class="btn btn--ghost btn--block" href="#/projects/new">' + ic('plus') + 'New project</a>'
+        : '<a class="card addcard" href="#/projects/new"><span class="tile">' + ic('list') + '</span><span class="grow"><span class="row__t">Start a project</span><span class="row__s">Drop in phone numbers or emails for a role and say what the assistant should do.</span></span>' + ic('chev') + '</a>') + '</section>';
+  }
+  function projectsPage(seg) {
+    seg = seg || 'active';
+    var all = projects(), g = { active: all.filter(function (p) { return p.status !== 'done'; }), done: all.filter(function (p) { return p.status === 'done'; }) };
+    var list = (g[seg] || g.active).slice().sort(function (a, b) { return String(b.created).localeCompare(String(a.created)); });
+    var h = '<div class="view">' + hdr('Projects', g.active.length ? g.active.length + ' active' : 'Fill a role from a list', '', 'Outreach') +
+      '<div class="toolbar"><a class="btn" href="#/projects/new">' + ic('plus') + 'New project</a></div>' +
+      segs([['active', 'Active', g.active.length], ['done', 'Done', g.done.length]], seg, function (k) { return '#/projects/' + k; });
+    h += list.length ? '<ul class="list">' + list.map(pjRow).join('') + '</ul>' : empty(seg === 'done' ? 'No finished projects.' : 'No projects yet.', seg === 'done' ? '' : '<p class="muted small">Start one when you have a list of numbers or emails for a role.</p><a class="btn" href="#/projects/new">' + ic('plus') + 'New project</a>', 'list');
+    return h + foot() + '</div>';
+  }
+  function contactsDrop() {
+    return '<section class="card"><div class="field"><label class="lbl" for="pjc">Phone numbers or emails</label>' +
+      '<label class="drop" id="drop" for="pjfile"><span class="tile">' + ic('file') + '</span><span class="grow"><b>Upload a list</b><span class="muted small">Tap to pick a CSV, text or contacts file, or drop it here. Or paste below.</span></span></label><input type="file" id="pjfile" hidden accept=".csv,.txt,.vcf,text/plain,text/csv,text/vcard">' +
+      '<textarea id="pjc" maxlength="60000" aria-describedby="pjc-sum pjc-err" placeholder="One per line, or just one. Names are optional.\nJane Doe, 718 555 0101\njdoe@example.com"></textarea><p class="help" id="pjc-sum" aria-live="polite"></p>' + errP('pjc') + '</div></section>';
+  }
+  function projectForm(pj) {
+    var edit = !!pj; pj = pj || { channel: 'text', route: 'yes' };
+    var open = S.needs.filter(function (n) { return liveJob(n) || n.code === pj.need_code; });
+    return '<div class="view narrow">' + top(edit ? 'Edit project' : 'New project', edit ? '#/project/' + pj.id : '#/projects') + '<form id="pjf" class="form" novalidate' + (edit ? ' data-id="' + pj.id + '"' : '') + '>' +
+      '<section class="card"><div class="field"><label class="lbl" for="pjt">Role to fill</label><input id="pjt" maxlength="80" autocomplete="off" placeholder="e.g. RBT in Jamaica, after school" aria-describedby="pjt-err" value="' + esc(pj.title || '') + '">' + errP('pjt') + '</div>' +
+      '<div class="field"><span class="lbl">Role</span>' + chips('pjrole', ROLE_LIST, pj.role || '', 'Role') + '</div>' +
+      (open.length ? '<div class="field"><label class="lbl" for="pjneed">Job <small>optional</small></label><select id="pjneed"><option value="">No job</option>' + open.map(function (n) { return '<option value="' + esc(n.code) + '"' + (n.code === pj.need_code ? ' selected' : '') + '>' + esc(n.code + ' \u00b7 ' + needLabel(n) + ' \u00b7 ' + n.borough) + '</option>'; }).join('') + '</select></div>' : '') + '</section>' +
+      (edit ? '' : contactsDrop()) +
+      '<section class="card"><div class="field"><span class="lbl">How to reach them</span>' + chips('pjch', [['text', 'Text'], ['call', 'Call'], ['email', 'Email']], pj.channel, 'How to reach them') + errP('pjch') + '</div></section>' +
+      '<section class="card"><div class="field"><label class="lbl" for="pji">What should the assistant do?</label><textarea id="pji" maxlength="4000" aria-describedby="pji-err" placeholder="e.g. Text each number about an RBT job in Jamaica, Queens, Mon to Thu 3 to 7pm. Ask if they are certified and which days work. If they want to talk, offer a call.">' + esc(pj.instructions || '') + '</textarea>' + errP('pji') + '</div>' +
+      '<div class="field"><label class="lbl" for="pjinfo">What it can tell them <small>optional</small></label><textarea id="pjinfo" class="short" maxlength="2000" placeholder="Pay range, location, hours, start date">' + esc(pj.info || '') + '</textarea></div>' +
+      '<div class="field"><label class="lbl" for="pjv">What to check <small>optional</small></label><textarea id="pjv" class="short" maxlength="1000" placeholder="e.g. RBT number, which boroughs, can start by Dec 1">' + esc(pj.verify || '') + '</textarea></div>' +
+      '<div class="field"><span class="lbl">Replies</span>' + chips('pjroute', [['yes', 'Send them to me too'], ['no', 'Assistant handles them']], pj.route || 'yes', 'Replies') + '</div></section>' +
+      '<div class="callout callout--blue">' + ic('shield') + '<span>Nothing goes out until you press Start outreach on the project. One person is fine for a test.</span></div>' +
+      '<div class="dock"><button class="btn btn--lg btn--block" type="submit">' + ic('check') + (edit ? 'Save changes' : 'Create project') + '</button></div></form></div>';
+  }
+  function addPeopleForm(pj) {
+    return '<div class="view narrow">' + top('Add people', '#/project/' + pj.id) + '<form id="acf" class="form" novalidate data-id="' + pj.id + '"><p class="muted lede">' + esc(pj.title) + '</p>' + contactsDrop() +
+      '<p class="muted small">Repeats and anyone who opted out before are left out. Nothing goes out until you press Start outreach.</p><div class="dock"><button class="btn btn--lg btn--block" type="submit">' + ic('plus') + 'Add to project</button></div></form></div>';
+  }
+  function pjRun(pj) { return (S.queue || []).filter(function (x) { return x.kind === 'project_email' && x.person_id === pj.id && x.status !== 'cancelled'; }).slice(-1)[0]; }
+  function pjNew(pj) { return contactsOf(pj.id).filter(function (c) { return c.state === 'new' && (pj.channel === 'email' ? c.email : c.phone); }); }
+  function sendingOff() { return !!S.sending && !(S.sending.key && S.sending.trigger); }
+  var LINE_TXT = '(443) 299-1843';
+  var WAIT = { shabbos: 'It goes out after Shabbat or Yom Tov.', hours: 'Texts go out 9am to 8pm. It goes out at 9am.', not_set_up: 'Texting is not set up yet, so nothing went out.' };
+  function pjStartBox(pj, busyRun) {
+    if (pj.status !== 'active') return '';
+    if (pj.channel === 'call') return '<p class="muted small">Calls go only to people who ask for one by text, or that you tap Call for on their page.</p>';
+    var n = pjNew(pj).length; if (busyRun || !n) return '';
+    return '<button class="btn btn--block" data-act="pjstart" data-id="' + pj.id + '">' + ic('send') + 'Start outreach' + (n ? ' (' + n + ')' : '') + '</button>';
+  }
+  function pjStartSheet(pj) {
+    var n = pjNew(pj).length, em = pj.channel === 'email', who = n + (n === 1 ? ' person' : ' people');
+    var msg = pj.message || ('Hi, this is the assistant for Roni at Together They Grow. We have an opening: ' + pj.title + '. Are you interested? Reply here with any questions, or to ask for a call.');
+    sheet('<h2>' + (em ? 'Email draft for ' + who : 'Text ' + who + '?') + '</h2>' +
+      '<p class="muted small">' + (em ? 'One Gmail draft in your work inbox with everyone in BCC, so nobody sees the others. You check it and press Send.' : 'From ' + LINE_TXT + '. Replies come to the assistant.') + '</p>' +
+      (em ? '<div class="field"><label class="lbl" for="pjsubj">Subject</label><input id="pjsubj" maxlength="150" value="' + esc(pj.subject || pj.title) + '"></div>' : '') +
+      '<div class="field"><label class="lbl" for="pjmsg">Message</label><textarea id="pjmsg" class="short" maxlength="1200">' + esc(msg) + '</textarea>' + (em ? '' : '<p class="help">Added at the end: Reply STOP to opt out.</p>') + '</div>' +
+      (em || !sendingOff() ? '' : '<p class="callout callout--amber">' + ic('alert') + '<span>' + WAIT.not_set_up + '</span></p>') +
+      (em ? '' : '<p class="muted small">Texts go out 9am to 8pm, never on Shabbat or Yom Tov.</p>') +
+      '<div class="btns"><button class="btn btn--lg" data-act="pjstart2" data-id="' + pj.id + '">' + ic('send') + (em ? 'Make the draft' : 'Text ' + who + ' now') + '</button><button class="btn btn--lg btn--ghost" data-act="closesheet">Cancel</button></div>');
+  }
+  function pjWaiting(pj) {
+    var w = contactsOf(pj.id).filter(function (c) { return c.state === 'queued'; }).length;
+    if (!w) return '';
+    return '<div class="callout callout--amber">' + ic('clock') + '<span>' + w + (w === 1 ? ' text is' : ' texts are') + ' waiting to go out. ' + (pj.status === 'paused' ? 'The project is paused.' : sendingOff() ? 'Texting is not set up yet. It goes out once it is.' : 'Texts go out 9am to 8pm, never on Shabbat or Yom Tov.') + '</span></div>';
+  }
+  function projectPage(id, seg) {
+    var pj = projById(id); if (!pj) return notFound();
+    seg = seg || 'all';
+    var k = pjCounts(pj.id), ch = CH[pj.channel] || CH.text, all = contactsOf(pj.id), q = pjRun(pj), busyRun = q && (q.status === 'queued' || q.status === 'working');
+    var h = '<div class="view narrow">' + top(pj.title, '#/projects', '<a class="iconbtn iconbtn--r" href="#/project/' + pj.id + '/edit" aria-label="Edit project">' + ic('pen') + '</a>') +
+      '<section class="card"><p class="hero-chips"><span class="st st--blue">' + esc(ch[0]) + '</span>' + (pj.role ? '<span class="st st--grey">' + esc(pj.role) + '</span>' : '') + (pj.status === 'paused' ? '<span class="st st--amber">Paused</span>' : pj.status === 'done' ? '<span class="st st--grey">Done</span>' : '') + '</p>' +
+      '<div class="pjstats">' + [['all', k.all, 'People', ''], ['green', k.green, 'Green light', 'g'], ['question', k.question, 'Question', 'q'], ['cross', k.cross, 'Crossed off', 'x']].map(function (s) { return '<a class="pjstat' + (s[3] ? ' pjstat--' + s[3] : '') + (seg === s[0] ? ' on' : '') + '" href="#/project/' + pj.id + '/' + s[0] + '" data-replace="1"><b>' + s[1] + '</b><span>' + s[2] + '</span></a>'; }).join('') + '</div>' +
+      '<details class="prev"><summary>What the assistant does ' + ic('chev') + '</summary><p class="pre">' + esc(pj.instructions || '') + '</p>' + (pj.info ? '<p class="lbl">It can tell them</p><p class="pre">' + esc(pj.info) + '</p>' : '') + (pj.verify ? '<p class="lbl">It checks</p><p class="pre">' + esc(pj.verify) + '</p>' : '') + '<p class="muted small">Replies: ' + (pj.route === 'yes' ? 'sent to you too' : 'the assistant handles them') + '</p></details>' +
+      '<a class="btn btn--soft btn--block" href="#/project/' + pj.id + '/add">' + ic('plus') + 'Add people</a>' + pjStartBox(pj, busyRun) + (q ? qstatus(q) : '') + '</section>' +
+      (pj.channel === 'text' && sendingOff() && !contactsOf(pj.id).some(function (c) { return c.state === 'queued'; }) ? '<div class="callout callout--amber">' + ic('alert') + '<span>Texting is not set up yet. Nothing goes out until it is.</span></div>' : '') + pjWaiting(pj) +
+      '<div class="sec__h sec__h--list"><h2>' + esc(seg === 'all' ? 'Everyone' : MARK[seg] ? MARK[seg][0] : 'Not judged yet') + '</h2>' + (seg !== 'all' ? '<a class="linkbtn" href="#/project/' + pj.id + '" data-replace="1">Show all</a>' : (k.open ? '<small>' + k.open + ' not judged</small>' : '')) + '</div>';
+    var list = all.filter(function (c) { return seg === 'all' ? true : seg === 'open' ? !c.mark : c.mark === seg; });
+    var order = { green: 0, question: 1, '': 2, cross: 3 };
+    list.sort(function (a, b) { return (order[a.mark || ''] - order[b.mark || '']) || String(b.updated).localeCompare(String(a.updated)); });
+    h += list.length ? '<ul class="list">' + list.map(cRow).join('') + '</ul>' : empty(all.length ? 'Nobody here.' : 'No people yet.', all.length ? '' : '<a class="btn" href="#/project/' + pj.id + '/add">' + ic('plus') + 'Add people</a>', 'users');
+    h += '<div class="btns pjfoot">' + (pj.status === 'done' ? '<button class="btn btn--ghost btn--sm" data-act="pjstatus" data-id="' + pj.id + '" data-to="active">' + ic('undo') + 'Reopen</button>'
+      : '<button class="btn btn--ghost btn--sm" data-act="pjstatus" data-id="' + pj.id + '" data-to="' + (pj.status === 'paused' ? 'active' : 'paused') + '">' + ic(pj.status === 'paused' ? 'play' : 'pause') + (pj.status === 'paused' ? 'Resume' : 'Pause') + '</button><button class="btn btn--ghost btn--sm" data-act="pjstatus" data-id="' + pj.id + '" data-to="done">' + ic('check') + 'Mark done</button>') + '</div>';
+    return h + foot() + '</div>';
+  }
+  function lastNote(c) { return touchesOf(c.id).filter(function (t) { return t.channel === 'note' || t.outcome; })[0]; }
+  function cRow(c) {
+    var n = lastNote(c), sub = [c.name ? (fmtPhone(c.phone) || c.email) : (c.phone && c.email ? c.email : ''), cStateText(c)].filter(Boolean).join(' \u00b7 ');
+    var line = c.mark_why || (n ? (n.outcome || n.body) : '');
+    return '<li><a class="row crow' + (c.mark === 'cross' ? ' crow--x' : '') + '" href="#/contact/' + c.id + '">' + markDot(c) + '<span class="grow"><span class="row__t">' + esc(cName(c)) + '</span><span class="row__s">' + esc(sub) + '</span>' + (line ? '<span class="crow__n">' + esc(line) + '</span>' : '') + '</span>' + ic('chev') + '</a></li>';
+  }
+  function logItem(t) {
+    var who = t.dir === 'in' ? 'Them' : t.by === 'Roni' ? 'You' : 'Assistant';
+    var kind = t.channel === 'note' ? 'Note' : t.channel === 'call' ? 'Call' : t.channel === 'email' ? 'Email' : 'Text';
+    var tag = t.mode === 'draft' ? '<span class="st st--grey">In your Gmail draft</span>' : t.mode === 'sent' ? '<span class="st st--green">Sent</span>' : t.mode === 'received' ? '<span class="st st--blue">Received</span>' : '';
+    return '<li class="log__i log__i--' + esc(t.dir || 'note') + (t.mode === 'draft' ? ' log__i--draft' : '') + '"><div class="log__h"><span class="log__ic">' + ic(t.channel === 'note' ? 'pen' : (CH[t.channel] || CH.text)[1]) + '</span><b>' + esc(who + ' \u00b7 ' + kind) + '</b>' + tag + '</div><p class="pre">' + esc(t.body) + '</p>' +
+      (t.outcome ? '<p class="log__o"><b>How it went:</b> ' + esc(t.outcome) + '</p>' : '') + '<p class="log__t">' + esc(when(t.at)) + '</p></li>';
+  }
+  function contactPage(id) {
+    var c = contactBy(id); if (!c) return notFound();
+    var pj = projById(c.project_id) || {}, tl = touchesOf(c.id), out = c.state === 'opted_out';
+    var h = '<div class="view narrow">' + top(cName(c), pj.id ? '#/project/' + pj.id : '#/projects') +
+      '<section class="card"><div class="need-hero"><span class="avatar avatar--lg" aria-hidden="true">' + (c.name ? esc(initials(c.name)) : ic(c.phone ? 'phone' : 'mail')) + '</span><div class="grow"><p class="big">' + esc(pj.title || '') + '</p><p class="muted">' + esc([fmtPhone(c.phone), c.email].filter(Boolean).join(' \u00b7 ')) + '</p><p class="hero-chips">' + markChip(c) + (c.state && !(c.state === 'call_requested' && c.call_at) && !out ? '<span class="st st--grey">' + esc(cStateText(c)) + '</span>' : '') + '</p></div></div>' +
+      (out ? '' : '<div class="contact">' + (c.phone ? '<a href="tel:' + esc(digits(c.phone)) + '">' + ic('phone') + 'Call</a><a href="sms:' + esc(digits(c.phone)) + '">' + ic('msg') + 'Text</a>' : '') + (c.email ? '<a href="mailto:' + esc(c.email) + '">' + ic('mail') + 'Email</a>' : '') + '</div>') + '</section>';
+    if (!out && c.state === 'calling') h += '<div class="callout callout--amber">' + ic('phone') + '<span>The assistant is calling them now. A call note shows up here after.</span></div>';
+    else if (!out && c.state === 'call_requested') h += '<div class="callout callout--amber">' + ic('phone') + '<span>' + (c.call_ok === 'roni' ? 'The assistant will call them ' : c.call_ok === 'them' ? 'They asked for a call. The assistant calls them ' : 'Wants a call. ') + (c.call_ok ? (c.call_at ? esc(when(c.call_at)) : 'next chance between 9am and 8pm') + '.' : (c.call_at ? esc(when(c.call_at)) + '.' : '')) + (c.call_ok ? ' <button class="linkbtn" data-act="ccancel" data-id="' + c.id + '">Cancel the call</button>' : '') + '</span></div>';
+    if (out) h += '<div class="callout callout--red">' + ic('alert') + '<span>Opted out. Nobody will contact them again from any project.</span></div>';
+    h += '<section class="sec"><div class="sec__h"><h2>Mark</h2>' + (c.mark_by ? '<small>' + (c.mark_by === 'Roni' ? 'Marked by you' : 'Assistant suggests') + '</small>' : '') + '</div><div class="card">' +
+      '<div class="markbar" role="group" aria-label="Mark">' + ['green', 'question', 'cross'].map(function (m) { var M = MARK[m]; return '<button class="mkbtn mkbtn--' + m + (c.mark === m ? ' on' : '') + '" aria-pressed="' + (c.mark === m) + '" data-act="cmark" data-id="' + c.id + '" data-mk="' + m + '">' + ic(M[2]) + '<span>' + esc(M[0]) + '</span></button>'; }).join('') + '</div>' +
+      (c.mark_why ? '<p class="mkwhy">' + esc(c.mark_why) + '</p>' : '') + '</div></section>';
+    h += '<section class="sec"><div class="sec__h"><h2>Messages, calls and notes</h2>' + (tl.length ? '<small>' + tl.length + '</small>' : '') + '</div>' +
+      (tl.length ? '<ul class="log">' + tl.slice().reverse().map(logItem).join('') + '</ul>' : '<p class="muted small">Nothing yet. Texts, replies and call notes show up here.</p>') +
+      '<div class="card notebox"><label class="lbl" for="cnote">Add a note</label><textarea id="cnote" class="short" maxlength="2000" placeholder="What happened, how it went"></textarea><div class="btns"><button class="btn btn--soft" data-act="cnote" data-id="' + c.id + '">' + ic('check') + 'Save note</button></div></div></section>';
+    h += '<div class="btns">' + (c.person_id && personBy(c.person_id) ? '<a class="btn btn--soft" href="#/person/' + c.person_id + '">' + ic('users') + 'Open in Applicants</a>' : c.mark === 'green' && c.name ? '<button class="btn btn--soft" data-act="cpromote" data-id="' + c.id + '">' + ic('users') + 'Add to Applicants</button>' : '') +
+      (out || !c.phone || c.call_ok || c.state === 'calling' ? '' : '<button class="btn btn--soft" data-act="ccall" data-id="' + c.id + '">' + ic('phone') + 'Have the assistant call</button>') +
+      (out ? '' : '<button class="btn btn--ghost" data-act="coptout" data-id="' + c.id + '">' + ic('x') + 'They asked us to stop</button>') + '</div>';
+    return h + foot() + '</div>';
+  }
+  /* contacts from pasted text, CSV or vCard: one person per line; names optional */
+  var PH_RE = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g, EM_RE = /[^\s@,;:<>"'()]+@[^\s@,;:<>"'()]+\.[a-z]{2,}/gi;
+  function parseContacts(text) {
+    text = String(text || '');
+    if (/BEGIN:VCARD/i.test(text)) text = text.split(/BEGIN:VCARD/i).map(function (b) { var g = function (k) { return ((b.match(new RegExp('^' + k + '[^:\\n]*:(.*)$', 'im')) || [])[1] || '').trim(); }; return [g('FN'), g('TEL'), g('EMAIL')].join(', '); }).join('\n');
+    var out = [], seen = {}, dupes = 0;
+    text.split(/\r?\n/).forEach(function (line) {
+      var ems = line.match(EM_RE) || [], phs = line.match(PH_RE) || [];
+      if (!ems.length && !phs.length) return;
+      var name = line.replace(EM_RE, ' ').replace(PH_RE, ' ').replace(/[,;\t|"<>]+/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!/[a-z]/i.test(name) || name.length > 60 || /^(name|phone|email|mobile|cell)\b/i.test(name)) name = '';
+      var n = Math.max(ems.length, phs.length);
+      for (var i = 0; i < n; i++) {
+        var ph = phs[i] ? phs[i].replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '') : '', em = ems[i] ? ems[i].toLowerCase() : '';
+        if ((ph && seen[ph]) || (em && seen[em])) { dupes++; continue; }
+        if (ph) seen[ph] = 1; if (em) seen[em] = 1;
+        out.push({ name: n === 1 ? name : '', phone: ph, email: em });
+      }
+    });
+    return { list: out, dupes: dupes };
+  }
+  function cSum() {
+    var a = document.getElementById('pjc'), s = document.getElementById('pjc-sum'); if (!a || !s) return;
+    var r = parseContacts(a.value), ph = r.list.filter(function (x) { return x.phone; }).length, em = r.list.filter(function (x) { return x.email; }).length;
+    s.textContent = r.list.length ? r.list.length + (r.list.length === 1 ? ' person: ' : ' people: ') + ph + ' with a phone, ' + em + ' with an email.' + (r.dupes ? ' ' + r.dupes + (r.dupes === 1 ? ' repeat' : ' repeats') + ' left out.' : '') : (a.value.trim() ? 'No phone numbers or emails found yet.' : '');
+  }
+  function appendC(t) { var a = document.getElementById('pjc'); if (!a) return; a.value = (a.value.trim() ? a.value.replace(/\s*$/, '\n') : '') + t; fieldErr('pjc', ''); cSum(); }
+  function readFile(f) { if (!f) return; if (f.size > 2e6) return toast('That file is too big. Up to 2 MB.'); var r = new FileReader(); r.onload = function () { appendC(String(r.result || '')); toast('Read ' + f.name); }; r.onerror = function () { toast('Couldn\u2019t read that file', null, true); }; r.readAsText(f); }
+  function addedMsg(r) { return 'Added ' + r.added + (r.added === 1 ? ' person.' : ' people.') + (r.dupes ? ' ' + r.dupes + ' already here.' : '') + (r.opted_out ? ' ' + r.opted_out + ' opted out before, left out.' : '') + ' Nothing was sent.'; }
+  function addAll(pid, list) {
+    var sum = { added: 0, dupes: 0, opted_out: 0, bad: 0 }, chunks = [];
+    for (var i = 0; i < list.length; i += 500) chunks.push(list.slice(i, i + 500));
+    return chunks.reduce(function (pr, ch) { return pr.then(function () { return call('addContacts', [pid, ch], rid()).then(function (r) { Object.keys(sum).forEach(function (k) { sum[k] += r[k] || 0; }); }); }); }, Promise.resolve()).then(function () { return sum; });
+  }
+  document.addEventListener('dragover', function (ev) { var d = ev.target.closest && ev.target.closest('#drop, #pjc'); if (!d) return; ev.preventDefault(); var z = document.getElementById('drop'); if (z) z.classList.add('on'); });
+  document.addEventListener('dragleave', function (ev) { var z = document.getElementById('drop'); if (z && !(ev.relatedTarget && ev.relatedTarget.closest && ev.relatedTarget.closest('#drop'))) z.classList.remove('on'); });
+  document.addEventListener('drop', function (ev) {
+    var d = ev.target.closest && ev.target.closest('#drop, #pjc'); if (!d) return; ev.preventDefault();
+    var z = document.getElementById('drop'); if (z) z.classList.remove('on');
+    var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]; if (f) readFile(f); else { var t = ev.dataTransfer && ev.dataTransfer.getData('text'); if (t) appendC(t); }
+  });
+  document.addEventListener('change', function (ev) { if (ev.target.id === 'pjfile') { readFile(ev.target.files && ev.target.files[0]); ev.target.value = ''; } });
+  document.addEventListener('input', function (ev) { if (ev.target.id === 'pjc') cSum(); });
+  function softSecret(s) { return /\b\d{3}-\d{2}-\d{4}\b/.test(s) || /\b\d{9}\b/.test(s) || /\b\d{12,17}\b/.test(s); }
+  function pjSubmit(f) {
+    var btn = f.querySelector('[type=submit]');
+    if (f.id === 'acf') {
+      var pr0 = parseContacts(val('pjc'));
+      if (!fieldErr('pjc', pr0.list.length ? '' : val('pjc') ? 'No phone numbers or emails found' : 'Paste or drop some numbers or emails')) return firstErr();
+      btn.disabled = true; busy(+1);
+      return addAll(f.dataset.id, pr0.list).then(function (r) { busy(-1); toast(addedMsg(r)); return load(true).then(function () { go('#/project/' + f.dataset.id, true); }); },
+        function (e) { busy(-1); btn.disabled = false; toast(errMsg(e), null, true); });
+    }
+    var title = val('pjt'), ch = pick('pjch')[0], ins = val('pji'), pid0 = f.dataset.id;
+    fieldErr('pjt', title ? '' : 'Name the role you are filling'); fieldErr('pjch', ch ? '' : 'Pick text, call or email'); fieldErr('pji', ins ? '' : 'Tell the assistant what to do');
+    if (ins && softSecret(ins + ' ' + val('pjinfo') + ' ' + val('pjv'))) fieldErr('pji', 'That looks like an ID or bank number. Leave it out.');
+    var parsed = pid0 ? null : parseContacts(val('pjc'));
+    if (!pid0) fieldErr('pjc', val('pjc') && !parsed.list.length ? 'No phone numbers or emails found' : '');
+    if (!firstErr()) return;
+    var pr = { title: title, role: pick('pjrole')[0] || '', need_code: val('pjneed'), channel: ch, instructions: ins, info: val('pjinfo'), verify: val('pjv'), route: pick('pjroute')[0] || 'yes' };
+    if (pid0) return act('updateProject', [pid0, pr], { msg: 'Saved' }).then(ok(function () { go('#/project/' + pid0, true); }));
+    btn.disabled = true; busy(+1);
+    call('addProject', [pr], rid()).then(function (pj) {
+      return (parsed.list.length ? addAll(pj.id, parsed.list) : Promise.resolve(null)).then(function (r) {
+        busy(-1); toast(r ? 'Project created. ' + addedMsg(r) : 'Project created. Add people any time.');
+        return load(true).then(function () { go('#/project/' + pj.id, true); });
+      });
+    }).catch(function (e) { busy(-1); btn.disabled = false; toast(errMsg(e), null, true); });
+  }
+  function pjClick(a, d, id) {
+    if (a === 'pjstart') { pjStartSheet(projById(id)); return true; }
+    if (a === 'pjstart2') { var spj = projById(id), sm = val('pjmsg'), su = val('pjsubj');
+      if (sm.replace(/\s*Reply STOP to opt out\.?\s*$/i, '').trim().length < 10) { toast('Write the message first'); return true; }
+      if (spj.channel === 'email' && !su) { toast('Add a subject'); return true; }
+      if (softSecret(sm)) { toast('That looks like an ID or bank number. Leave it out.'); return true; }
+      closeSheet(true); act('startProject', [id, { message: sm, subject: su }]).then(ok(function (r) {
+        if (r.channel === 'email') return toast('Asked for the email draft (' + r.count + (r.count === 1 ? ' person' : ' people') + ' in BCC). Nothing is sent.');
+        toast(r.waiting ? 'Ready for ' + r.count + '. ' + WAIT[r.waiting] : r.failed ? r.sent + ' sent, ' + r.failed + ' did not go out. See their page.' : r.sent === r.count ? 'Texted ' + r.sent + (r.sent === 1 ? ' person.' : ' people.') : 'Texted ' + r.sent + '. The rest go out in the next few minutes.');
+      })); return true; }
+    if (a === 'ccall') { var cc = contactBy(id); sheet('<h2>Have the assistant call ' + esc(cName(cc)) + '?</h2><p class="muted">It calls from ' + LINE_TXT + ', 9am to 8pm, never on Shabbat or Yom Tov, and writes a call note on this page.</p><div class="btns"><button class="btn btn--lg" data-act="ccall2" data-id="' + id + '">' + ic('phone') + 'Call them</button><button class="btn btn--lg btn--ghost" data-act="closesheet">Cancel</button></div>'); return true; }
+    if (a === 'ccall2') { closeSheet(true); act('callContact', [id, ''], { msg: 'The assistant will call them.' }); return true; }
+    if (a === 'ccancel') { act('cancelCall', [id], { msg: 'Call cancelled' }); return true; }
+    if (a === 'pjstatus') { var pj = projById(id), prev = pj.status; act('updateProject', [id, { status: d.to }], { msg: d.to === 'done' ? 'Marked done' : d.to === 'paused' ? 'Paused. The assistant stops working on it.' : 'Active again', undo: ['updateProject', [id, { status: prev }]], local: function () { pj.status = d.to; } }); return true; }
+    if (a === 'cmark') { var c = contactBy(id), m = c.mark === d.mk && c.mark_by === 'Roni' ? '' : d.mk, pm = [c.mark, c.mark_by];
+      act('markContact', [id, m, ''], { msg: m ? 'Marked ' + MARK[m][0].toLowerCase() : 'Mark cleared', undo: ['markContact', [id, pm[0] || '', c.mark_why || '']], local: function () { c.mark = m; c.mark_by = m ? 'Roni' : ''; c.mark_why = ''; } }); return true; }
+    if (a === 'cnote') { var nt = val('cnote'); if (!nt) { toast('Write a note first'); return true; } if (softSecret(nt)) { toast('That looks like an ID or bank number. Leave it out.'); return true; }
+      act('addNote', [id, nt], { msg: 'Note saved', local: function () { S.touches = S.touches || []; S.touches.push({ id: 'tmp', contact_id: id, project_id: contactBy(id).project_id, at: stamp(), channel: 'note', dir: 'note', mode: 'note', body: nt, by: 'Roni' }); } }); return true; }
+    if (a === 'coptout') { sheet('<h2>Stop contacting them?</h2><p class="muted">They won\u2019t be texted, called or emailed again from any project. This can\u2019t be undone in the app.</p><div class="btns"><button class="btn btn--lg btn--red" data-act="coptout2" data-id="' + id + '">They asked us to stop</button><button class="btn btn--lg btn--ghost" data-act="closesheet">Cancel</button></div>'); return true; }
+    if (a === 'coptout2') { closeSheet(true); act('optOut', [id, 'Roni'], { msg: 'Opted out. Nobody will contact them again.' }); return true; }
+    if (a === 'cpromote') { var cp = contactBy(id), pp = projById(cp.project_id) || {};
+      if (!cp.name) { toast('Add their name in a note first'); return true; }
+      busy(+1); call('addPerson', [{ name: cp.name, phone: fmtPhone(cp.phone), email: cp.email, role: pp.role || '', need_code: pp.need_code || '', source: 'Project: ' + (pp.title || '').slice(0, 40) }], rid())
+        .then(function (r) { return call('updateContact', [id, { person_id: r.id }], rid()).then(function () { busy(-1); toast('Added to Applicants. Nothing was sent.'); return load(true).then(function () { go('#/person/' + r.id); }); }); })
+        .catch(function (e) { busy(-1); toast(errMsg(e), null, true); }); return true; }
+    return false;
+  }
+
   var NAV = J(sessionStorage.getItem('ttgr.nav'), []), replacing = false;
   function navSave() { try { sessionStorage.setItem('ttgr.nav', JSON.stringify(NAV.slice(-60))); } catch (e) {} }
   function cur() { return location.hash && location.hash !== '#' ? location.hash : '#/'; }
@@ -809,7 +1074,7 @@
   function back(parent) { if (NAV.length > 1) history.back(); else { NAV = [parent || '#/']; navSave(); replacing = true; location.replace(parent || '#/'); } }
   (function seed() {
     var h = cur();
-    var r0 = h.split('/')[1] || '', root = /^(job|need|flyer)$/.test(r0) ? '#/jobs' : r0 === 'person' ? '#/applicants' : '#/';   // a cold deep link backs out to its tab
+    var r0 = h.split('/')[1] || '', root = /^(job|need|flyer)$/.test(r0) ? '#/jobs' : r0 === 'person' ? '#/applicants' : /^(project|contact)$/.test(r0) ? '#/projects' : '#/';   // a cold deep link backs out to its tab
     if (h !== '#/' && h !== root && NAV[NAV.length - 1] !== h) { try { history.replaceState(null, '', root); history.pushState(null, '', h); } catch (e) {} NAV = [root, h]; navSave(); }
     else if (!NAV.length) { NAV = [h]; navSave(); }
   })();
@@ -817,7 +1082,7 @@
   function render(keep) {
     if (!S) return;
     var h = route(), v, y = window.scrollY, ae = document.activeElement && document.activeElement.id;
-    if (keep && /^(nf|pf|sf)$/.test((document.querySelector('form') || {}).id || '')) return;   // never wipe a form someone is typing in
+    if (keep && /^(nf|pf|sf|pjf|acf)$/.test((document.querySelector('form') || {}).id || '')) return;   // never wipe a form someone is typing in
     if (h[0] === 'need') h[0] = 'job';   // v3 links
     if (h[0] === 'stage') v = h[1] === 'interviews' ? interviewsPage() : h[1] === 'welcome' ? hiresPage() : h[1] === 'applicants' ? applicantsPage() : jobsPage();
     else if (h[0] === 'jobs') v = jobsPage(h[1]);
@@ -831,6 +1096,11 @@
     else if (h[0] === 'new') v = needForm(null, h[1] || '');
     else if (h[0] === 'add') v = personForm(null, h[1] || '');
     else if (h[0] === 'settings') v = settingsPage();
+    else if (h[0] === 'projects') v = h[1] === 'new' ? projectForm(null) : projectsPage(h[1]);
+    else if (h[0] === 'project' && h[2] === 'edit') v = projById(h[1]) ? projectForm(projById(h[1])) : notFound();
+    else if (h[0] === 'project' && h[2] === 'add') v = projById(h[1]) ? addPeopleForm(projById(h[1])) : notFound();
+    else if (h[0] === 'project') v = projectPage(h[1], h[2]);
+    else if (h[0] === 'contact') v = contactPage(h[1]);
     else if (h[0] === 'flyer') v = flyer(h[1]);
     else v = home();
     setTabs(tabOf(h));
@@ -921,6 +1191,7 @@
     if (d.resume) { var rs = needId(d.resume), to = Object.keys(J(rs.posted, {})).length ? 'posted' : 'open'; act('updateNeed', [d.resume, { status: to }], { msg: 'Job resumed', local: function () { rs.status = to; } }); return; }
     if (d.ts) { var tp = personBy(id), on1 = d.ts === '1'; act('updatePerson', [id, { timesheet: on1 }], { msg: on1 ? 'Timesheet marked received' : 'Timesheet unmarked', local: function () { tp.timesheet_at = on1 ? stamp() : ''; } }); return; }
     var a = d.act; if (!a) return;
+    if (pjClick(a, d, id)) return;
     if (a === 'movestage') { var mp = personBy(id), cg = segOf(mp);
       sheet('<h2>Move ' + esc(first(mp.name)) + ' to\u2026</h2><p class="muted small">Now: ' + esc(segName(cg)) + '. Nothing is sent to them.</p><div class="sheetlist">' + SEGS.filter(function (x) { return x[0] !== cg; }).map(function (x) { return '<button class="btn btn--ghost btn--lg btn--block" data-decide="' + SEG_DECIDE[x[0]] + '" data-id="' + mp.id + '">' + esc(x[1]) + '</button>'; }).join('') + '<button class="btn btn--soft btn--lg btn--block" data-act="closesheet">Cancel</button></div>'); return; }
     if (a === 'savefit') { var fv = val('fitn'); if (secretish(fv)) return toast('That looks like an ID or bank number. Leave it out.'); act('updatePerson', [id, { fit_summary: fv }], { msg: 'Notes saved', local: function () { personBy(id).fit_summary = fv; } }); return; }
@@ -956,6 +1227,7 @@
   });
   document.addEventListener('submit', function (ev) {
     var f = ev.target; ev.preventDefault();
+    if (f.id === 'pjf' || f.id === 'acf') { pjSubmit(f); return; }
     if (f.id === 'nf') {
       var role = pick('role')[0], boro = pick('borough')[0], days = Array.prototype.map.call(document.querySelectorAll('.days button.on'), function (b) { return b.dataset.day; });
       fieldErr('role', role ? '' : 'Pick a role'); fieldErr('borough', boro ? '' : 'Pick a borough'); fieldErr('days', days.length ? '' : 'Pick at least one day');
